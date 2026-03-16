@@ -61,7 +61,8 @@ def validar_marcacion(trabajador):
 def registrar_marcacion(trabajador, ip, dispositivo):
     config = obtener_configuracion()
     ahora = timezone.now()
-    hora_actual = ahora.time()
+    ahora_local = timezone.localtime(ahora) 
+    hora_actual = ahora_local.time()       
 
     tipo, error = validar_marcacion(trabajador)
     if error:

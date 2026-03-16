@@ -158,7 +158,7 @@ class ReporteRangoFechasView(APIView):
             fecha__gte=inicio,
             fecha__lte=fin,
             exitoso=True
-        ).order_by('fecha').select_related('trabajador')
+        ).order_by('-fecha').select_related('trabajador')
 
         # Filtrar por trabajador si se especifica
         if trabajador_id:
@@ -229,7 +229,7 @@ class ReportePDFView(APIView):
             fecha__gte=inicio,
             fecha__lte=fin,
             exitoso=True
-        ).order_by('fecha').select_related('trabajador')
+        ).order_by('-fecha').select_related('trabajador')
 
         if trabajador_id:
             marcaciones = marcaciones.filter(trabajador_id=trabajador_id)

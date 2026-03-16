@@ -7,7 +7,9 @@ from .views import (
     DesbloquearUsuarioView,
     ResetearIntentosFacialesView,
     ListarUsuariosView,
-    PerfilView
+    PerfilView,
+    CambiarRolUsuarioView,
+    ResetearPasswordView
 )
 
 urlpatterns = [
@@ -19,4 +21,6 @@ urlpatterns = [
     path('resetear-intentos/<int:pk>/', ResetearIntentosFacialesView.as_view(), name='resetear_intentos'),
     path('listar/', ListarUsuariosView.as_view(), name='listar_usuarios'),
     path('perfil/', PerfilView.as_view(), name='perfil'),
+    path('cambiar-rol/<int:pk>/', CambiarRolUsuarioView.as_view(), name='cambiar_rol'),
+    path('resetear-password/<int:pk>/', ResetearPasswordView.as_view(), name='resetear_password'),
 ]

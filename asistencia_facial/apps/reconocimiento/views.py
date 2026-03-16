@@ -176,9 +176,9 @@ class VerificarRostroView(APIView):
             )
             restantes = config.max_intentos_faciales - usuario.intentos_fallidos
             return Response({
-                'error': f'Rostro no verificado. Intentos restantes: {restantes}',
-                'similitud': similitud
-            }, status=status.HTTP_401_UNAUTHORIZED)
+                'error': f'El rostro no coincide con el trabajador registrado. Intentos restantes: {restantes}',
+                'similitud': round(similitud, 2)
+                }, status=status.HTTP_401_UNAUTHORIZED)
 
         # Verificación exitosa
         usuario.intentos_fallidos = 0

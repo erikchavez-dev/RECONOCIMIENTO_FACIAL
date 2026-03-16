@@ -268,3 +268,68 @@ class PerfilView(APIView):
             'debe_cambiar_password': usuario.debe_cambiar_password,
             'bloqueado': usuario.bloqueado,
         }, status=status.HTTP_200_OK)
+    
+class CambiarRolUsuarioView(APIView):
+    permission_classes = [EsAdmin]
+
+    def patch(self, request, pk):
+        try:
+            usuario = Usuario.objects.get(pk=pk)
+        except Usuario.DoesNotExist:
+            return Response(
+                {'error': 'Usuario no encontrado'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        rol_nombre = request.data.get('rol')
+        if not rol_nombre:
+            return Response(
+                {'error': 'rol es requerido'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            rol = Rol.objects.get(nombre=rol_nombre)
+        except Rol.DoesNotExist:
+            return Response(
+                {'error': 'Rol no encontrado'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        usuario.rol = rol
+        usuario.save()
+
+        return Response(
+            {'mensaje': f'Rol actualizado a {rol_nombre}'},
+            status=status.HTTP_200_OK
+        )
+
+
+class ResetearPasswordView(APIView):
+    permission_classes = [EsAdmin]
+
+    def post(self, request, pk):
+        try:
+            usuario = Usuario.objects.get(pk=pk)
+        except Usuario.DoesNotExist:
+            return Response(
+                {'error': 'Usuario no encontrado'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        from django.contrib.auth.hashers import make_password
+        usuario.password = make_password('municipalidad2026')
+        usuario.debe_cambiar_password = True
+        usuario.save()
+
+        registrar_auditoria(
+            usuario=request.user,
+            accion='RESETEAR_PASSWORD',
+            descripcion=f'Contraseña reseteada para {usuario.username}',
+            ip=request.META.get('REMOTE_ADDR', '0.0.0.0')
+        )
+
+        return Response(
+            {'mensaje': f'Contraseña reseteada a municipalidad2026'},
+            status=status.HTTP_200_OK
+        )
