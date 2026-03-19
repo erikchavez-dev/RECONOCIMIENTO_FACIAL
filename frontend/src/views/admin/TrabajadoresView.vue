@@ -30,7 +30,7 @@
                 alt="Foto"
               />
             </td>
-            <td>{{ t.nombres }} {{ t.apellido_paterno }} {{ t.apellido_materno }}</td>
+            <td>{{ t.apellido_paterno }} {{ t.apellido_materno  }} {{t.nombres }}</td>
             <td>{{ t.dni }}</td>
             <td>{{ t.cargo }}</td>
             <td>
@@ -44,12 +44,24 @@
               </span>
             </td>
             <td class="acciones">
-              <button @click="abrirModalEditar(t)" class="btn-accion" title="Editar">✏️</button>
-              <button @click="toggleActivo(t)" class="btn-accion" :title="t.activo ? 'Desactivar' : 'Activar'">
-                {{ t.activo ? '🔴' : '🟢' }}
+              <!-- BOTÓN EDITAR -->
+              <button @click="abrirModalEditar(t)" class="btn-accion" title="Editar">
+                <img :src="iconoEditar" alt="Editar" width="18" height="18" />
               </button>
-              <button @click="eliminar(t)" class="btn-accion" title="Eliminar">🗑️</button>
+
+              <!-- INTERRUPTOR DE ACTIVACIÓN -->
+              <label class="switch-button">
+                <input type="checkbox" :checked="t.activo" @change="toggleActivo(t)">
+                <span class="slider-round"></span>
+              </label>
+
+
+              <!-- BOTÓN ELIMINAR -->
+              <button @click="eliminar(t)" class="btn-accion delete" title="Eliminar">
+                <img :src="iconBasura" alt="Eliminar" width="18" height="18" />
+              </button>
             </td>
+
           </tr>
         </tbody>
       </table>
@@ -120,15 +132,14 @@
           <div class="opciones-foto">
             <button
               @click="modoFoto = 'camara'"
-              :class="['btn-opcion', modoFoto === 'camara' ? 'activo' : '']"
-            >
-              📷 Usar cámara
+              :class="['btn-opcion', modoFoto === 'camara' ? 'activo' : '']">
+            Usar cámara
             </button>
             <button
               @click="modoFoto = 'archivo'"
               :class="['btn-opcion', modoFoto === 'archivo' ? 'activo' : '']"
             >
-              📁 Cargar imágenes
+            Cargar imágenes
             </button>
           </div>
 
@@ -139,7 +150,7 @@
               <canvas ref="canvasRef" style="display:none"></canvas>
             </div>
             <button @click="capturarFoto" :disabled="fotosCapturadas.length >= 3" class="btn-capturar">
-              📷 Capturar foto ({{ fotosCapturadas.length }}/3)
+              Capturar foto ({{ fotosCapturadas.length }}/3)
             </button>
           </div>
 
@@ -154,7 +165,7 @@
               style="display:none"
             />
             <button @click="$refs.inputArchivo.click()" class="btn-cargar">
-              📁 Seleccionar 3 imágenes
+            Seleccionar 3 imágenes
             </button>
             <p class="hint">Seleccione exactamente 3 imágenes</p>
           </div>
@@ -190,6 +201,9 @@
 </template>
 
 <script setup>
+import iconoEditar from '@/assets/icon-lapicito.svg'
+import iconBasura from '@/assets/icon-basura.svg'
+
 import { ref, onMounted, watch } from 'vue'
 import AdminLayout from '@/components/AdminLayout.vue'
 import api from '@/services/api'
@@ -354,7 +368,8 @@ async function guardar() {
     cerrarModal()
     await cargarTrabajadores()
   } catch (e) {
-    errorModal.value = e.response?.data?.error || JSON.stringify(e.response?.data) || 'Error al guardar'
+    console.log('Error detallado:', e.response?.data)
+    errorModal.value = e.response?.data?.error || JSON.stringify(e.response?.data) || 'Error al procesar las fotos'
   } finally {
     guardando.value = false
   }
@@ -422,11 +437,30 @@ async function toggleActivo(t) {
 
 async function eliminar(t) {
   if (!confirm(`¿Eliminar a ${t.nombres} ${t.apellido_paterno}?`)) return
+  
   try {
     await api.delete(`/api/trabajadores/${t.id}/`)
     await cargarTrabajadores()
   } catch (e) {
-    alert(e.response?.data?.error || 'Error al eliminar')
+    const data = e.response?.data
+    
+    // Si tiene marcaciones preguntar si forzar
+    if (data?.tiene_marcaciones) {
+      const forzar = confirm(
+        `El trabajador ${t.nombres} ${t.apellido_paterno} tiene marcaciones registradas.\n\n` +
+        `¿Desea eliminarlo de todas formas junto con todas sus marcaciones?`
+      )
+      if (!forzar) return
+
+      try {
+        await api.delete(`/api/trabajadores/${t.id}/`, { data: { forzar: true } })
+        await cargarTrabajadores()
+      } catch (e2) {
+        alert(e2.response?.data?.error || 'Error al eliminar')
+      }
+    } else {
+      alert(data?.error || 'Error al eliminar')
+    }
   }
 }
 </script>
@@ -591,6 +625,10 @@ async function eliminar(t) {
   cursor: pointer;
   font-size: 0.88rem;
   transition: all 0.2s;
+  display: flex;     
+  align-items: center;  
+  justify-content: center; 
+  gap: 8px;   
 }
 
 .btn-opcion.activo {
@@ -741,4 +779,66 @@ async function eliminar(t) {
 }
 
 .btn-guardar:disabled { opacity: 0.7; cursor: not-allowed; }
+
+/* Contenedor del switch */
+.switch-button {
+  position: relative;
+  display: inline-block;
+  width: 42px;
+  height: 22px;
+  vertical-align: middle;
+}
+
+/* Ocultar el checkbox original */
+.switch-button input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+/* El fondo del switch */
+.slider-round {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: #cbd5e1; /* Gris cuando está apagado */
+  transition: .4s;
+  border-radius: 24px;
+}
+
+/* El círculo blanco que se mueve */
+.slider-round:before {
+  position: absolute;
+  content: "";
+  height: 16px;
+  width: 16px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: .4s;
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+/* Color naranja cuando está activado (combinando con tu menú) */
+input:checked + .slider-round {
+  background-color: #16a34a; 
+}
+
+/* Movimiento del círculo al activar */
+input:checked + .slider-round:before {
+  transform: translateX(20px);
+}
+
+/* Efecto de foco para accesibilidad */
+input:focus + .slider-round {
+  box-shadow: 0 0 1px #ff7300;
+}
+
+.icono-camara {
+  width: 26px;
+  height: 26px;
+  margin-right: 6px;
+}
+
 </style>

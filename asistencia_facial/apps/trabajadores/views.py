@@ -32,9 +32,8 @@ class TrabajadorListarCrearView(APIView):
                 serializer.errors,
                 status=status.HTTP_400_BAD_REQUEST
             )
+        
         trabajador = serializer.save()
-
-        # Crear usuario automáticamente al crear trabajador
         try:
             rol = Rol.objects.get(nombre='TRABAJADOR')
             Usuario.objects.create(
@@ -48,14 +47,13 @@ class TrabajadorListarCrearView(APIView):
             pass
         except Exception as e:
             print(f'Error creando usuario automático: {e}')
-
+            
         registrar_auditoria(
             usuario=request.user,
             accion='CREAR_TRABAJADOR',
             descripcion=f'Trabajador creado: {trabajador.nombres} {trabajador.apellido_paterno} DNI: {trabajador.dni}',
             ip=request.META.get('REMOTE_ADDR', '0.0.0.0')
         )
-
         return Response(
             TrabajadorSerializer(trabajador).data,
             status=status.HTTP_201_CREATED
@@ -135,31 +133,36 @@ class TrabajadorDetalleView(APIView):
             )
 
         # Verificar si tiene marcaciones registradas
-        if trabajador.marcaciones.exists():
+        forzar = request.data.get('forzar', False)
+        if trabajador.marcaciones.exists() and not forzar:
             return Response(
-                {'error': 'No se puede eliminar un trabajador con marcaciones registradas. Desactívelo en su lugar.'},
+                {'error': 'El trabajador tiene marcaciones registradas.', 'tiene_marcaciones': True},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
         nombre_completo = f'{trabajador.nombres} {trabajador.apellido_paterno}'
         dni = trabajador.dni
+        
 
         # Eliminar usuario asociado primero
         try:
+            from apps.marcaciones.models import Marcacion
+            from apps.auditoria.models import Auditoria
+
             usuario = Usuario.objects.get(trabajador=trabajador)
+            Auditoria.objects.filter(usuario=usuario).delete()
+            Marcacion.objects.filter(trabajador=trabajador).delete()
             usuario.delete()
         except Usuario.DoesNotExist:
-            pass
-
-        trabajador.delete()
-
-        registrar_auditoria(
-            usuario=request.user,
-            accion='ELIMINAR_TRABAJADOR',
-            descripcion=f'Trabajador eliminado: {nombre_completo} DNI: {dni}',
-            ip=request.META.get('REMOTE_ADDR', '0.0.0.0')
-        )
-
+            from apps.marcaciones.models import Marcacion
+            Marcacion.objects.filter(trabajador=trabajador).delete()
+            trabajador.delete()
+            registrar_auditoria(
+                usuario=request.user,
+                accion='ELIMINAR_TRABAJADOR',
+                descripcion=f'Trabajador eliminado: {nombre_completo} DNI: {dni}',
+                ip=request.META.get('REMOTE_ADDR', '0.0.0.0')
+                )
         return Response(
             {'mensaje': f'Trabajador {nombre_completo} eliminado correctamente'},
             status=status.HTTP_200_OK

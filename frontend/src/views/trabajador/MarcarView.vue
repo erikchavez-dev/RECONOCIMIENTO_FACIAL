@@ -3,11 +3,11 @@
 
     <header class="header">
       <div class="header-left">
-        <img src="/logo-2.webp" alt="Logo" class="logo" />
-        <span class="sistema-nombre">Control de Asistencia</span>
+        <img src="/sgd_logo.webp" alt="Logo" class="logo" />
+        <span class="sistema-nombre">Sistema de Control de Asistencia</span>
       </div>
       <div class="header-right">
-        <span class="nombre-usuario">👤 {{ auth.usuario?.nombre_completo }}</span>
+        <span class="nombre-usuario"><img :src="iconoPerfil" class="icono-perfil" />{{ auth.usuario?.nombre_completo }}</span>
         <button @click="handleLogout" class="btn-logout">⬅ Salir</button>
       </div>
     </header>
@@ -21,9 +21,9 @@
       <!-- PASO 1: CONFIRMACIÓN -->
       <div v-if="paso === 'confirmar'" class="confirmacion-container">
         <div class="confirmacion-card">
-          <div class="confirmacion-icono">{{ tipoMarcacion === 'ENTRADA' ? '🕐' : '🕔' }}</div>
+          <div class="confirmacion-icono">{{ tipoMarcacion === 'ENTRADA' ? '' : '' }}</div>
           <h3>{{ tipoMarcacion === 'ENTRADA' ? 'Registrar Entrada' : 'Registrar Salida' }}</h3>
-          <p>{{ fechaHora }}</p>
+          <p class="fecha-texto">{{ fechaHora }}</p>
           <p class="confirmacion-pregunta">
             ¿Desea registrar su <strong>{{ tipoMarcacion === 'ENTRADA' ? 'entrada' : 'salida' }}</strong> ahora?
           </p>
@@ -38,31 +38,26 @@
       <div v-if="paso === 'camara'" class="camara-container">
         <div class="camara-wrapper">
           <video ref="videoRef" autoplay playsinline class="video"></video>
-          <div class="ovalo-container">
-            <svg class="ovalo-svg" viewBox="0 0 300 400" xmlns="http://www.w3.org/2000/svg">
-              <defs>
-                <mask id="mask">
-                  <rect width="300" height="400" fill="white"/>
-                  <ellipse cx="150" cy="190" rx="100" ry="130" fill="black"/>
-                </mask>
-              </defs>
-              <rect width="300" height="400" fill="rgba(0,0,0,0.45)" mask="url(#mask)"/>
+          <!-- Guía de posición del rostro -->
+           <div class="guia-rostro">
+            <svg viewBox="0 0 300 300" class="guia-svg">
               <ellipse
-                cx="150" cy="190" rx="100" ry="130"
-                fill="none"
-                :stroke="detectando ? '#22c55e' : 'rgba(255,255,255,0.8)'"
-                stroke-width="3"
-                :class="{ pulsando: detectando }"
+              cx="160" cy="160" rx="95" ry="115"
+              fill="none"
+              stroke="rgba(3, 221, 83, 0.8)"
+              stroke-width="2.5"
+              stroke-dasharray="8 4"
               />
             </svg>
           </div>
           <canvas ref="canvasRef" style="display:none"></canvas>
         </div>
 
-        <div class="estado-deteccion">
-          <div class="punto" :class="{ procesando: detectando }"></div>
-          <p>{{ mensajeEstado }}</p>
-        </div>
+        <p class="instruccion">{{ mensajeEstado }}</p>
+
+        <button @click="intentarMarcacion" :disabled="detectando" class="btn-capturar">
+          {{ detectando ? 'Procesando...' : 'Verificar rostro' }}
+        </button>
 
         <div v-if="errorCamara" class="error">{{ errorCamara }}</div>
       </div>
@@ -70,23 +65,19 @@
       <!-- PASO 3: RESULTADO -->
       <div v-if="paso === 'resultado'" class="resultado-container">
         <div :class="['resultado', resultado.exito ? 'resultado-exito' : 'resultado-error']">
-          <div class="resultado-icono">{{ resultado.exito ? '✅' : '❌' }}</div>
+          <div class="resultado-icono">{{ resultado.exito ? '' : '' }}</div>
           <h3>{{ resultado.mensaje }}</h3>
-          <p v-if="resultado.tipo">
-            Tipo: <strong>{{ resultado.tipo }}</strong>
-          </p>
+          <p v-if="resultado.tipo">Tipo: <strong>{{ resultado.tipo }}</strong></p>
           <p v-if="resultado.estado">
             Estado:
             <strong :class="resultado.estado === 'PUNTUAL' ? 'texto-verde' : 'texto-amarillo'">
               {{ resultado.estado }}
             </strong>
           </p>
-          <p v-if="resultado.similitud">
+          <!-- <p v-if="resultado.similitud">
             Similitud: <strong>{{ (resultado.similitud * 100).toFixed(1) }}%</strong>
-          </p>
-          <p v-if="resultado.hora">
-            Hora: <strong>{{ resultado.hora }}</strong>
-          </p>
+          </p> -->
+          <p v-if="resultado.hora">Hora: <strong>{{ resultado.hora }}</strong></p>
         </div>
         <button v-if="resultado.exito" @click="$router.push('/trabajador/panel')" class="btn-panel">
           Ir al panel
@@ -104,6 +95,8 @@
 </template>
 
 <script setup>
+import iconoPerfil from '@/assets/icon-perfil.svg'
+
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
@@ -117,14 +110,12 @@ const canvasRef = ref(null)
 const detectando = ref(false)
 const resultado = ref(null)
 const errorCamara = ref('')
-const mensajeEstado = ref('Posicione su rostro dentro del óvalo...')
+const mensajeEstado = ref('Centre su rostro frente a la cámara y presione el botón')
 const paso = ref('confirmar')
 const tipoMarcacion = ref('ENTRADA')
 
 let stream = null
-let intervalo = null
 let intentosFallidos = 0
-const MAX_INTENTOS = 5
 
 const fechaHora = computed(() => {
   return new Date().toLocaleString('es-PE', {
@@ -139,7 +130,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
-  detenerTodo()
+  detenerCamara()
 })
 
 async function verificarTipoMarcacion() {
@@ -160,7 +151,7 @@ async function verificarTipoMarcacion() {
       paso.value = 'resultado'
       resultado.value = {
         exito: false,
-        mensaje: '✅ Ya registró su asistencia de entrada y salida de hoy'
+        mensaje: 'Ya registró su asistencia de entrada y salida de hoy'
       }
       return
     }
@@ -182,30 +173,25 @@ async function confirmar() {
 async function iniciarCamara() {
   try {
     stream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        facingMode: 'user',
-        width: { ideal: 480 },
-        height: { ideal: 640 }
-      }
+      video: { facingMode: 'user', width: 640, height: 480 }
     })
     videoRef.value.srcObject = stream
-    setTimeout(() => iniciarDeteccionAutomatica(), 2000)
   } catch (e) {
     errorCamara.value = 'No se pudo acceder a la cámara. Verifique los permisos.'
   }
 }
 
-function iniciarDeteccionAutomatica() {
-  intervalo = setInterval(async () => {
-    if (!detectando.value && paso.value === 'camara') {
-      await intentarMarcacion()
-    }
-  }, 3000)
+function detenerCamara() {
+  if (stream) {
+    stream.getTracks().forEach(t => t.stop())
+    stream = null
+  }
 }
 
 async function intentarMarcacion() {
+  if (detectando.value) return
   detectando.value = true
-  mensajeEstado.value = 'Detectando rostro...'
+  mensajeEstado.value = 'Verificando...'
 
   try {
     const canvas = canvasRef.value
@@ -221,7 +207,7 @@ async function intentarMarcacion() {
       dispositivo: navigator.userAgent.includes('Mobile') ? 'Móvil' : 'PC Oficina'
     })
 
-    detenerTodo()
+    detenerCamara()
     const marcacion = response.data.marcacion
     resultado.value = {
       exito: true,
@@ -239,17 +225,15 @@ async function intentarMarcacion() {
     const errorMsg = e.response?.data?.error || ''
     const status = e.response?.status
 
-    // No hay rostro o calidad baja — no contar intento
     if (!e.response || errorMsg.includes('no se detectó') ||
         errorMsg.includes('calidad') || errorMsg.includes('No se detectó')) {
-      mensajeEstado.value = 'Posicione su rostro dentro del óvalo...'
+      mensajeEstado.value = 'No se detectó rostro. Acérquese más y presione de nuevo.'
       detectando.value = false
       return
     }
 
-    // Ya marcó hoy
     if (errorMsg.includes('entrada y salida')) {
-      detenerTodo()
+      detenerCamara()
       resultado.value = {
         exito: false,
         mensaje: '✅ Ya registró su asistencia de entrada y salida de hoy'
@@ -258,78 +242,81 @@ async function intentarMarcacion() {
       return
     }
 
-    // Usuario bloqueado por el backend
     if (status === 403) {
-      detenerTodo()
+      detenerCamara()
       resultado.value = { exito: false, mensaje: errorMsg }
       paso.value = 'resultado'
       return
     }
 
-    // Rostro no coincide — mostrar advertencias progresivas
     if (errorMsg.includes('no coincide') || status === 401) {
       intentosFallidos++
 
       if (intentosFallidos <= 2) {
-        mensajeEstado.value = 'Posicione su rostro dentro del óvalo...'
+        mensajeEstado.value = 'Rostro no coincide. Posiciónese bien y presione de nuevo.'
       } else if (intentosFallidos === 3) {
-        mensajeEstado.value = '⚠️ Acérquese más a la cámara y mejore la iluminación'
+        mensajeEstado.value = '⚠️ Acérquese más y mejore la iluminación'
       } else if (intentosFallidos === 4) {
-        mensajeEstado.value = '⚠️ Mire de frente y asegúrese de tener buena iluminación'
+        mensajeEstado.value = '⚠️ Mire de frente con buena iluminación'
       } else if (intentosFallidos === 5) {
         mensajeEstado.value = '🔴 Último intento — si falla contacte al administrador'
       } else {
-        detenerTodo()
+        detenerCamara()
         resultado.value = {
           exito: false,
-          mensaje: 'No se pudo verificar su identidad. Contacte al administrador para desbloquear su cuenta.'
+          mensaje: 'No se pudo verificar su identidad. Contacte al administrador.'
         }
         paso.value = 'resultado'
       }
-
       detectando.value = false
       return
     }
 
-    // Cualquier otro error
-    intentosFallidos++
-    mensajeEstado.value = 'Posicione su rostro dentro del óvalo...'
+    mensajeEstado.value = 'Error al procesar. Intente de nuevo.'
     detectando.value = false
   }
-}
-
-function detenerTodo() {
-  if (intervalo) { clearInterval(intervalo); intervalo = null }
-  if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null }
 }
 
 function reiniciar() {
   resultado.value = null
   errorCamara.value = ''
   intentosFallidos = 0
-  mensajeEstado.value = 'Posicione su rostro dentro del óvalo...'
+  mensajeEstado.value = 'Centre su rostro frente a la cámara y presione el botón'
   verificarTipoMarcacion()
 }
 
 function volver() {
-  detenerTodo()
+  detenerCamara()
   router.push('/trabajador/panel')
 }
 
 async function handleLogout() {
-  detenerTodo()
+  detenerCamara()
   await auth.logout()
   router.push('/login')
 }
 </script>
 
 <style scoped>
+.logo {
+  width: 180px;
+  height: 60px;
+  object-fit: contain;
+}
+
 .marcar {
   min-height: 100vh;
   background-color: #f0f4f8;
   display: flex;
   flex-direction: column;
 }
+
+.icono-perfil {
+  width: 20px;
+  height: 20px;
+  margin-right: 6px;
+}
+
 
 .header {
   background-color: #1a3a6b;
@@ -340,8 +327,7 @@ async function handleLogout() {
 }
 
 .header-left { display: flex; align-items: center; gap: 10px; }
-.logo { width: 40px; height: 40px; object-fit: contain; }
-.sistema-nombre { color: white; font-weight: bold; font-size: 1rem; }
+
 .header-right { display: flex; align-items: center; gap: 16px; }
 .nombre-usuario { color: white; font-size: 0.9rem; }
 
@@ -359,7 +345,7 @@ async function handleLogout() {
 
 .main {
   flex: 1;
-  padding: 32px 24px;
+  padding: 24px;
   max-width: 600px;
   margin: 0 auto;
   width: 100%;
@@ -376,7 +362,7 @@ async function handleLogout() {
   background: none;
   border: none;
   color: #1a3a6b;
-  font-size: 0.95rem;
+  font-size: 1.02rem;
   cursor: pointer;
   font-weight: 600;
 }
@@ -384,10 +370,7 @@ async function handleLogout() {
 h2 { font-size: 1.3rem; color: #1a3a6b; }
 
 /* CONFIRMACIÓN */
-.confirmacion-container {
-  display: flex;
-  justify-content: center;
-}
+.confirmacion-container { display: flex; justify-content: center; }
 
 .confirmacion-card {
   background: white;
@@ -407,7 +390,7 @@ h2 { font-size: 1.3rem; color: #1a3a6b; }
   margin-bottom: 6px;
 }
 
-.confirmacion-card p {
+.fecha-texto {
   font-size: 0.85rem;
   color: #666;
   margin-bottom: 4px;
@@ -415,16 +398,12 @@ h2 { font-size: 1.3rem; color: #1a3a6b; }
 }
 
 .confirmacion-pregunta {
-  font-size: 1rem !important;
-  color: #333 !important;
-  margin: 20px 0 24px !important;
+  font-size: 1rem;
+  color: #333;
+  margin: 20px 0 24px;
 }
 
-.confirmacion-botones {
-  display: flex;
-  gap: 16px;
-  justify-content: center;
-}
+.confirmacion-botones { display: flex; gap: 16px; justify-content: center; }
 
 .btn-no {
   padding: 12px 32px;
@@ -434,7 +413,6 @@ h2 { font-size: 1.3rem; color: #1a3a6b; }
   border-radius: 8px;
   cursor: pointer;
   font-size: 1rem;
-  transition: all 0.2s;
 }
 
 .btn-no:hover { border-color: #999; color: #333; }
@@ -447,7 +425,6 @@ h2 { font-size: 1.3rem; color: #1a3a6b; }
   border-radius: 8px;
   cursor: pointer;
   font-size: 1rem;
-  transition: background 0.2s;
 }
 
 .btn-si:hover { background: #142d54; }
@@ -462,65 +439,43 @@ h2 { font-size: 1.3rem; color: #1a3a6b; }
 
 .camara-wrapper {
   position: relative;
-  border-radius: 16px;
+  width: 100%;
+  max-width: 420px;
+  border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 4px 24px rgba(0,0,0,0.2);
-  width: 100%;
-  max-width: 320px;
+  background: #000;
 }
 
 .video {
   width: 100%;
   display: block;
-  aspect-ratio: 3/4;
+  aspect-ratio: 4/3;
   object-fit: cover;
 }
 
-.ovalo-container {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
+.instruccion {
+  font-size: 0.9rem;
+  color: #555;
+  text-align: center;
+  max-width: 420px;
 }
 
-.ovalo-svg {
+.btn-capturar {
+  padding: 14px;
+  background: #1a3a6b;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.2s;
   width: 100%;
-  height: 100%;
+  max-width: 420px;
 }
 
-.pulsando {
-  animation: pulsar 1s infinite;
-}
-
-@keyframes pulsar {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
-}
-
-.estado-deteccion {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.punto {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: #22c55e;
-  flex-shrink: 0;
-}
-
-.punto.procesando {
-  background: #f59e0b;
-  animation: parpadear 0.8s infinite;
-}
-
-@keyframes parpadear {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.2; }
-}
-
-.estado-deteccion p { font-size: 0.9rem; color: #555; }
+.btn-capturar:hover:not(:disabled) { background: #142d54; }
+.btn-capturar:disabled { opacity: 0.7; cursor: not-allowed; }
 
 /* RESULTADO */
 .resultado-container {
@@ -577,6 +532,27 @@ h2 { font-size: 1.3rem; color: #1a3a6b; }
   border-radius: 8px;
   text-align: center;
   width: 100%;
-  max-width: 320px;
+  max-width: 420px;
 }
+.guia-rostro {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.guia-svg {
+  width: 90%;
+  height: 90%;
+  opacity: 0.9;
+}
+
+.sistema-nombre {
+  color: white;
+  font-weight: bold;
+  font-size: 1.4em;
+}
+
 </style>

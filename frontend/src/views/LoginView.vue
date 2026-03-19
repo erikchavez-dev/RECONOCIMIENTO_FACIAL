@@ -16,13 +16,16 @@
 
         <div class="campo">
           <label>Usuario (DNI)</label>
-          <input
+          <div class="input-wrapper">
+            <img :src="iconoUsuario" alt="usuario" class="icono-input" />
+            <input
             v-model="username"
             type="text"
             placeholder="Ingrese su DNI"
             maxlength="8"
             @keyup.enter="handleLogin"
-          />
+            />
+          </div>
         </div>
 
         <div class="campo">
@@ -34,8 +37,14 @@
               placeholder="Ingrese su contraseña"
               @keyup.enter="handleLogin"
             />
-            <button class="toggle-password" @click="mostrarPassword = !mostrarPassword">
-              {{ mostrarPassword ? '🙈' : '👁️' }}
+            <button
+              class="toggle-password"
+              @click.prevent="mostrarPassword = !mostrarPassword"
+              type="button"
+            >
+              <!-- Uso v-if/v-else para forzar el cambio de icono -->
+              <img v-if="mostrarPassword" :src="ojoAbierto" alt="Ocultar contraseña" />
+              <img v-else :src="ojoCerrado" alt="Mostrar contraseña" />
             </button>
           </div>
         </div>
@@ -51,7 +60,7 @@
         </button>
         <button @click="$router.push('/')" class="btn-inicio">
           Volver a Inicio
-         </button>
+        </button>
 
       </div>
     </div>
@@ -59,6 +68,9 @@
 </template>
 
 <script setup>
+import ojoAbierto from '@/assets/ojo-abierto.svg'
+import ojoCerrado from '@/assets/ojo-cerrado.svg'
+import iconoUsuario from '@/assets/icono-usuario.svg'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
@@ -84,13 +96,11 @@ async function handleLogin() {
   try {
     const data = await auth.login(username.value, password.value)
 
-    // Si debe cambiar contraseña → redirigir
     if (data.debe_cambiar_password) {
       router.push('/cambiar-password')
       return
     }
 
-    // Redirigir según rol
     if (data.usuario.rol === 'ADMIN') {
       router.push('/admin/dashboard')
     } else {
@@ -119,13 +129,12 @@ async function handleLogin() {
   justify-content: center;
   align-items: center;
 }
+
 @keyframes gradient {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
   100% { background-position: 0% 50%; }
 }
-
-
 
 .login-card {
   backdrop-filter: blur(15px);
@@ -171,12 +180,13 @@ h2 {
   font-size: 1.05rem;
   font-weight: 600;
   color: #000000;
-  margin-bottom: 6px;
+  margin-bottom: 0px;
 }
 
 .campo input {
   width: 100%;
   padding: 10px 12px;
+  padding-right: 44px; /* espacio para el botón del ojo */
   border: 1px solid #ddd;
   border-radius: 6px;
   font-size: 0.95rem;
@@ -189,25 +199,47 @@ h2 {
   border-color: #1a3a6b;
 }
 
+/* --- PASSWORD WRAPPER --- */
 .password-wrapper {
   position: relative;
+  display: flex;
+  align-items: center;
+  
 }
 
 .password-wrapper input {
-  padding-right: 40px;
+  flex: 1;
+  padding-right: 44px; /* evita que el texto quede debajo del ícono */
 }
 
 .toggle-password {
   position: absolute;
-  right: 10px;
-  top: 50%;
-  transform: translateY(-50%);
+  right: 0;
+  top: 0;
+  height: 100%;
+  width: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 1rem;
+  padding: 0;
+  border-radius: 0 6px 6px 0;
 }
 
+.toggle-password:focus {
+  outline: none;
+}
+
+.toggle-password img {
+  width: 20px;
+  height: 20px;
+  display: block;
+  pointer-events: none; /* evita que el click lo absorba la imagen */
+}
+
+/* --- ERROR --- */
 .error {
   background: #fef2f2;
   color: #dc2626;
@@ -217,6 +249,7 @@ h2 {
   border: 1px solid #fecaca;
 }
 
+/* --- BOTONES --- */
 .btn-ingresar {
   width: 100%;
   padding: 12px;
@@ -251,12 +284,35 @@ h2 {
   cursor: pointer;
   transition: background 0.2s;
 }
+
 .btn-inicio:hover:not(:disabled) {
   background-color: #00ffff;
 }
+
 .btn-inicio:disabled {
   opacity: 0.7;
   cursor: not-allowed;
+}
+
+.input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-wrapper input {
+  width: 100%;
+  padding-left: 15px; /* espacio para el ícono */
+  box-sizing: border-box;
+  justify-content: space-between;
+}
+
+.icono-input {
+  position: absolute;
+  right: 10px;
+  width: 18px;
+  height: 18px;
+  pointer-events: none; /* no interfiere con el input */
 }
 
 </style>

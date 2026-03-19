@@ -11,51 +11,81 @@
     <div v-else>
       <div class="tarjetas">
 
-        <div class="tarjeta">
-          <div class="tarjeta-icono">👥</div>
-          <div class="tarjeta-info">
-            <span class="tarjeta-valor">{{ stats.trabajadores?.total_activos }}</span>
-            <span class="tarjeta-label">Total trabajadores activos</span>
+        <div class="tarjeta-contenedor">
+          <div class="tarjeta-titulo">
+            TRABAJADORES TOTALES
+          </div>
+          <div class="tarjeta-cuerpo">
+            <img :src="iconoTrabajadores" alt="trabajadores" class="tarjeta-icono" />
+            <div class="tarjeta-info">
+              <span class="tarjeta-valor">{{ stats.trabajadores?.total_activos }}</span>
+              <span class="tarjeta-label">Trabajadores activos</span>
+            </div>
           </div>
         </div>
 
-        <div class="tarjeta">
-          <div class="tarjeta-icono">🪪</div>
-          <div class="tarjeta-info">
-            <span class="tarjeta-valor">{{ stats.trabajadores?.con_embedding }}</span>
-            <span class="tarjeta-label">Con embedding registrado</span>
+        <div class="tarjeta-contenedor">
+          <div class="tarjeta-titulo">
+            EMBEDDINGS  
+          </div>
+          <div class="tarjeta-cuerpo">
+            <img :src="iconoCheck" alt="trabajadores" class="tarjeta-icono" />
+            <div class="tarjeta-info">
+              <span class="tarjeta-valor">{{ stats.trabajadores?.con_embedding }}</span>
+              <span class="tarjeta-label">Embeddings registrados</span>
+            </div>
           </div>
         </div>
 
-        <div class="tarjeta">
-          <div class="tarjeta-icono">➡️</div>
-          <div class="tarjeta-info">
-            <span class="tarjeta-valor">{{ stats.hoy?.entradas }}</span>
-            <span class="tarjeta-label">Entradas de hoy</span>
+        <div class="tarjeta-contenedor">
+          <div class="tarjeta-titulo">
+            ENTRADAS   
+          </div>
+          <div class="tarjeta-cuerpo">
+            <img :src="iconoEntrada" alt="trabajadores" class="tarjeta-icono" />
+            <div class="tarjeta-info">
+              <span class="tarjeta-valor">{{ stats.hoy?.entradas }}</span>
+              <span class="tarjeta-label">Entradas de hoy</span>
+            </div>
           </div>
         </div>
 
-        <div class="tarjeta">
-          <div class="tarjeta-icono">⚠️</div>
-          <div class="tarjeta-info">
-            <span class="tarjeta-valor">{{ stats.hoy?.tardanzas }}</span>
-            <span class="tarjeta-label">Tardanzas de hoy</span>
+        <div class="tarjeta-contenedor">
+          <div class="tarjeta-titulo">
+            TARDANZAS 
+          </div>
+          <div class="tarjeta-cuerpo">
+            <img :src="iconoTardanza" alt="trabajadores" class="tarjeta-icono" />
+            <div class="tarjeta-info">
+              <span class="tarjeta-valor">{{ stats.hoy?.tardanzas }}</span>
+              <span class="tarjeta-label">Tardanzas de hoy</span>
+            </div>
           </div>
         </div>
 
-        <div class="tarjeta">
-          <div class="tarjeta-icono">👥</div>
-          <div class="tarjeta-info">
-            <span class="tarjeta-valor">{{ stats.hoy?.sin_marcar }}</span>
-            <span class="tarjeta-label">Sin marcar hoy</span>
+        <div class="tarjeta-contenedor">
+          <div class="tarjeta-titulo">
+            SIN MARCAR 
+          </div>
+          <div class="tarjeta-cuerpo">
+            <img :src="iconoSinMarcar" alt="trabajadores" class="tarjeta-icono" />
+            <div class="tarjeta-info">
+              <span class="tarjeta-valor">{{ stats.hoy?.sin_marcar }}</span>
+              <span class="tarjeta-label">Sin marcar hoy</span>
+            </div>
           </div>
         </div>
-
-        <div class="tarjeta">
-          <div class="tarjeta-icono">📈</div>
-          <div class="tarjeta-info">
-            <span class="tarjeta-valor">{{ stats.mes_actual?.porcentaje_puntualidad }}%</span>
-            <span class="tarjeta-label">Puntualidad del mes</span>
+        
+        <div class="tarjeta-contenedor">
+          <div class="tarjeta-titulo">
+            PORCENTAJE
+          </div>
+          <div class="tarjeta-cuerpo">
+            <img :src="iconPuntualidad" alt="trabajadores" class="tarjeta-icono" />
+            <div class="tarjeta-info">
+              <span class="tarjeta-valor">{{ stats.mes_actual?.porcentaje_puntualidad }}%</span>
+              <span class="tarjeta-label">Puntualidad del mes</span>
+            </div>
           </div>
         </div>
 
@@ -111,6 +141,12 @@
 </template>
 
 <script setup>
+import iconoTrabajadores from '@/assets/icono-trabajadores.svg'
+import iconoCheck from '@/assets/icon-check.svg'
+import iconoEntrada from '@/assets/icon-entrada.svg'
+import iconoTardanza from '@/assets/icon-tarde.svg'
+import iconoSinMarcar from '@/assets/icon-sin-marcar.svg'
+import iconPuntualidad from '@/assets/icon-puntualidad.svg'
 import { ref, onMounted } from 'vue'
 import AdminLayout from '@/components/AdminLayout.vue'
 import api from '@/services/api'
@@ -155,7 +191,9 @@ onMounted(async () => {
 }
 
 .tarjeta-icono {
-  font-size: 2rem;
+  height: 28px;
+  width: 28px;
+  
 }
 
 .tarjeta-info {
@@ -222,4 +260,57 @@ onMounted(async () => {
   border-radius: 3px;
   flex-shrink: 0;
 }
+
+/* Contenedor principal con bordes redondeados */
+.tarjeta-contenedor {
+  background: white;
+  border-radius: 8px;
+  overflow: hidden; /* Corta el fondo del título para que respete el radio */
+  border: 1px solid #e5e7eb;
+  box-shadow: 5px 5px 5px 5px hwb(90 45% 55% / 0.1); 
+  transition: transform 0.2s ease;
+}
+
+.tarjeta-contenedor:hover {
+  box-shadow: 0 8px 20px 0 rgba(17, 24, 39, 0.15);
+  transform: translateY(-8px);
+}
+
+/* Línea del título (Negro o Azul oscuro) */
+.tarjeta-titulo {
+  background: #1a3a6b; /* Negro azulado muy elegante */
+  color: white;
+  padding: 8px 16px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+/* Espaciado para tu contenido original */
+.tarjeta-cuerpo {
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Ajustes a tus clases originales para que se vean bien */
+.tarjeta-valor {
+  display: block;
+  font-size: 24px;
+  font-weight: 800;
+  color: #111827;
+}
+
+.tarjeta-label {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.tarjeta-icono {
+  width: 40px;
+  height: 40px;
+}
+
+
 </style>

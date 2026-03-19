@@ -30,10 +30,10 @@
 
       <div class="botones-filtro">
         <button @click="verReporte" :disabled="cargando" class="btn-ver">
-          🔍 {{ cargando ? 'Cargando...' : 'Ver reporte' }}
+        {{ cargando ? 'Cargando...' : 'Ver reporte' }}
         </button>
         <button @click="descargarPDF" :disabled="descargando" class="btn-pdf">
-          📄 {{ descargando ? 'Generando...' : 'Descargar PDF' }}
+        {{ descargando ? 'Generando...' : 'Descargar PDF' }}
         </button>
       </div>
 

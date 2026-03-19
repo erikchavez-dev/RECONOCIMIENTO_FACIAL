@@ -88,7 +88,7 @@
 
       <!-- BOTÓN GUARDAR -->
       <button @click="guardar" :disabled="guardando" class="btn-guardar">
-        💾 {{ guardando ? 'Guardando...' : 'Guardar configuración' }}
+      {{ guardando ? 'Guardando...' : 'Guardar configuración' }}
       </button>
 
     </div>

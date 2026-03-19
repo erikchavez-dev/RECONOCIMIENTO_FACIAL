@@ -20,6 +20,9 @@ export const useAuthStore = defineStore('auth', () => {
   const esTrabajador = computed(() => usuario.value?.rol === 'TRABAJADOR')
   const debeCambiarPassword = computed(() => usuario.value?.debe_cambiar_password)
 
+  //PARA LA IP
+  const BASE_URL = import.meta.env.VITE_API_URL
+
   // LOGIN — llama al backend y guarda los tokens en memoria
   async function login(username, password) {
     const response = await axios.post('http://127.0.0.1:8000/api/auth/login/', {

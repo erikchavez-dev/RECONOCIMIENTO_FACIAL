@@ -8,32 +8,32 @@
     <!-- HEADER -->
     <header class="header">
       <div class="header-left">
-        <img src="/logo-2.webp" alt="Logo" class="logo" />
-        <span class="sistema-nombre">Control de Asistencia</span>
+        <img src="/sgd_logo.webp" alt="Logo" class="logo" />
+        <span class="sistema-nombre">Sistema de Control de Asistencia</span>
       </div>
       <div class="header-right">
-        <span class="nombre-usuario">👤 {{ auth.usuario?.nombre_completo }}</span>
+        <span class="nombre-usuario"><img :src="iconoPerfil" class="icono-perfil" />{{ auth.usuario?.nombre_completo }}</span>
         <button @click="handleLogout" class="btn-logout">⬅ Salir</button>
       </div>
     </header>
 
     <!-- CONTENIDO PRINCIPAL -->
     <main class="main">
-      <h2 class="bienvenida">Bienvenido, {{ primerNombre, apellido_paterno }}</h2>
+      <h2 class="bienvenida">Bienvenido, {{ primerNombre }} {{ apellido_paterno }} {{ apellido_materno }}</h2>
       <p class="fecha">{{ fechaHoy }}</p>
 
       <div class="botones">
 
         <!-- MARCAR ASISTENCIA -->
         <div class="btn-card" @click="$router.push('/trabajador/marcar')">
-          <div class="btn-icono">📷</div>
+          <div class="btn-icono"><img :src="imagenReconocimiento" class="img-panel" /></div>
           <h3>Marcar Asistencia</h3>
           <p>Registrar entrada o salida</p>
         </div>
 
         <!-- MI HISTORIAL -->
         <div class="btn-card" @click="$router.push('/trabajador/historial')">
-          <div class="btn-icono">📋</div>
+          <div class="btn-icono"><img :src="imagenHistorial" class="img-panel" /></div>
           <h3>Mi Historial</h3>
           <p>Ver mis marcaciones</p>
         </div>
@@ -45,6 +45,10 @@
 </template>
 
 <script setup>
+import imagenReconocimiento from '@/assets/reconocimiento.webp'
+import imagenHistorial from '@/assets/historial.webp'
+import iconoPerfil from '@/assets/icon-perfil.svg'
+
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
@@ -52,9 +56,17 @@ import { useAuthStore } from '@/stores/auth'
 const router = useRouter()
 const auth = useAuthStore()
 
-// Solo el primer nombre
+// da el nombre y el apelido
 const primerNombre = computed(() => {
   return auth.usuario?.nombre_completo?.split(' ')[0] || ''
+})
+
+const apellido_paterno = computed(() => {
+  return auth.usuario?.nombre_completo?.split(' ')[1] || ''
+})
+
+const apellido_materno = computed(() => {
+  return auth.usuario?.nombre_completo?.split(' ')[2] || ''
 })
 
 // Fecha actual en español
@@ -74,6 +86,21 @@ async function handleLogout() {
 </script>
 
 <style scoped>
+.img-panel {
+  width: 98px;
+  height: 98px;
+  object-fit: contain;
+  border-radius: 13px;
+}
+
+.icono-perfil {
+  width: 20px;
+  height: 20px;
+  margin-right: 6px;
+}
+
+
+
 .panel {
   min-height: 100vh;
   background-color: #f0f4f8;
@@ -97,15 +124,15 @@ async function handleLogout() {
 }
 
 .logo {
-  width: 40px;
-  height: 40px;
+  width: 180px;
+  height: 60px;
   object-fit: contain;
 }
 
 .sistema-nombre {
   color: white;
   font-weight: bold;
-  font-size: 1rem;
+  font-size: 1.4em;
 }
 
 .header-right {

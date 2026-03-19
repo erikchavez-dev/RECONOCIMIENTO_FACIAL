@@ -14,5 +14,7 @@ class ConfiguracionSistemaSerializer(serializers.ModelSerializer):
             'max_intentos',
             'max_intentos_faciales',
             'umbral_similitud',
+            'ip_autorizada',
+            'control_ip_activo',
             'created_at',
         ]

@@ -8,11 +8,11 @@
     <!-- HEADER -->
     <header class="header">
       <div class="header-left">
-        <img src="/logo-2.webp" alt="Logo" class="logo" />
-        <span class="sistema-nombre">Control de Asistencia</span>
+        <img src="/sgd_logo.webp" alt="Logo" class="logo" />
+        <span class="sistema-nombre">Sistema de Control de Asistencia</span>
       </div>
       <div class="header-right">
-        <span class="nombre-usuario">👤 {{ auth.usuario?.nombre_completo }}</span>
+        <span class="nombre-usuario"><img :src="iconoPerfil" class="icono-perfil" />{{ auth.usuario?.nombre_completo }}</span>
         <button @click="handleLogout" class="btn-logout">⬅ Salir</button>
       </div>
     </header>
@@ -58,6 +58,7 @@
 </template>
 
 <script setup>
+import iconoPerfil from '@/assets/icon-perfil.svg'
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
@@ -101,6 +102,14 @@ async function handleLogout() {
 </script>
 
 <style scoped>
+
+.icono-perfil {
+  width: 20px;
+  height: 20px;
+  margin-right: 6px;
+}
+
+
 .historial {
   min-height: 100vh;
   background-color: #f0f4f8;
@@ -123,15 +132,15 @@ async function handleLogout() {
 }
 
 .logo {
-  width: 40px;
-  height: 40px;
+  width: 180px;
+  height: 60px;
   object-fit: contain;
 }
 
 .sistema-nombre {
   color: white;
   font-weight: bold;
-  font-size: 1rem;
+  font-size: 1.4em;
 }
 
 .header-right {

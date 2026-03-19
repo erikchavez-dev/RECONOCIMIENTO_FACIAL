@@ -6,7 +6,7 @@
 
     <div class="toolbar">
       <h3>Gestión de Usuarios</h3>
-      <button @click="cargarUsuarios" class="btn-actualizar">🔄 Actualizar</button>
+      <button @click="cargarUsuarios" class="btn-actualizar">Actualizar</button>
     </div>
 
     <div class="tabla-container">
@@ -66,17 +66,17 @@
                 @click="desbloquear(u)"
                 class="btn-accion"
                 title="Desbloquear"
-              >🔓</button>
+              ><img :src="iconoCandado" alt="Desbloquear" width="18" height="18" /></button>
               <button
                 @click="resetearIntentos(u)"
                 class="btn-accion"
                 title="Resetear intentos faciales"
-              >👁️</button>
+              ><img :src="iconoFacial" alt="Resetear intentos faciales" width="25" height="25" /></button>
               <button
                 @click="resetearPassword(u)"
                 class="btn-accion"
                 title="Resetear contraseña"
-              >🔑</button>
+              ><img :src="iconoCandadoCerrado" alt="Resetear contraseña" width="18" height="18" /></button>
             </td>
           </tr>
         </tbody>
@@ -92,6 +92,10 @@
 </template>
 
 <script setup>
+import iconoCandado from '@/assets/icon-candado.svg'
+import iconoCandadoCerrado from '@/assets/icon-candado-cerrado.svg'
+import iconoFacial from '@/assets/icon-facial.svg'
+
 import { ref, onMounted } from 'vue'
 import AdminLayout from '@/components/AdminLayout.vue'
 import api from '@/services/api'

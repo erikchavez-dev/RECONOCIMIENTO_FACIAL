@@ -6,7 +6,7 @@
 
     <div class="toolbar">
       <h3>Registro de Auditoría</h3>
-      <button @click="cargarAuditoria" class="btn-actualizar">🔄 Actualizar</button>
+      <button @click="cargarAuditoria" class="btn-actualizar">Actualizar</button>
     </div>
 
     <div class="tabla-container">
