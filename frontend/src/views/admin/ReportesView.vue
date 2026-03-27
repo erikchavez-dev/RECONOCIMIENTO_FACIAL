@@ -1,5 +1,5 @@
 <!-- ReportesView.vue — Reportes de asistencia por rango de fechas -->
-<!-- Filtros: fecha inicio, fecha fin, trabajador opcional -->
+<!-- Filtros: fecha inicio, fecha fin -->
 <!-- Botones: Ver reporte y Descargar PDF -->
 
 <template>
@@ -16,15 +16,6 @@
         <div class="campo">
           <label>Fecha fin</label>
           <input v-model="fechaFin" type="date" />
-        </div>
-        <div class="campo">
-          <label>Trabajador (opcional)</label>
-          <select v-model="trabajadorId">
-            <option value="">Todos los trabajadores</option>
-            <option v-for="t in trabajadores" :key="t.id" :value="t.id">
-              {{ t.nombres }} {{ t.apellido_paterno }} — {{ t.dni }}
-            </option>
-          </select>
         </div>
       </div>
 

@@ -4,6 +4,12 @@
 <template>
   <AdminLayout titulo="Usuarios">
 
+  <!-- BUSCADOR -->
+    <div class="buscador">
+      <input v-model="buscar" @input="buscarTrabajadores" type="text" placeholder="Buscar por DNI, nombre o apellido..."
+        class="input-buscar" />
+    </div>
+
     <div class="toolbar">
       <h3>Gestión de Usuarios</h3>
       <button @click="cargarUsuarios" class="btn-actualizar">Actualizar</button>
@@ -19,7 +25,6 @@
             <th>DNI</th>
             <th>Cargo</th>
             <th>Rol</th>
-            <th>Estado</th>
             <th>Bloqueado</th>
             <th>Intentos</th>
             <th>Cambiar contraseña</th>
@@ -45,13 +50,9 @@
               </select>
             </td>
             <td>
-              <span :class="['badge', u.activo ? 'badge-activo' : 'badge-inactivo']">
-                {{ u.activo ? 'Activo' : 'Inactivo' }}
-              </span>
-            </td>
-            <td>
-              <span :class="['badge', u.bloqueado ? 'badge-bloqueado' : 'badge-libre']">
-                {{ u.bloqueado ? 'Bloqueado' : 'Libre' }}
+             <span
+                :class="['badge', u.bloqueado === true || u.bloqueado === 'true' ? 'badge-bloqueado' : 'badge-libre']">
+                {{ u.bloqueado === true || u.bloqueado === 'true' ? 'Bloqueado' : 'Libre' }}
               </span>
             </td>
             <td>{{ u.intentos_fallidos }}</td>
@@ -83,6 +84,18 @@
       </table>
     </div>
 
+  <!-- PAGINACIÓN -->
+    <div class="paginacion" v-if="totalPaginas > 1">
+      <button @click="cambiarPagina(paginaActual - 1)" :disabled="paginaActual === 1" class="btn-pagina">←
+        Anterior</button>
+
+      <span class="pagina-info">
+        Página {{ paginaActual }} de {{ totalPaginas }} ({{ total }} registros)
+      </span>
+
+      <button @click="cambiarPagina(paginaActual + 1)" :disabled="paginaActual === totalPaginas"
+        class="btn-pagina">Siguiente →</button>
+    </div>
     <!-- MENSAJE -->
     <div v-if="mensaje" :class="['mensaje', mensajeExito ? 'exito' : 'error']">
       {{ mensaje }}
@@ -105,6 +118,13 @@ const cargando = ref(true)
 const mensaje = ref('')
 const mensajeExito = ref(true)
 
+// Paginación y búsqueda
+const buscar = ref('')
+const paginaActual = ref(1)
+const totalPaginas = ref(1)
+const total = ref(0)
+let timeoutBuscar = null
+
 onMounted(async () => {
   await cargarUsuarios()
 })
@@ -112,13 +132,32 @@ onMounted(async () => {
 async function cargarUsuarios() {
   cargando.value = true
   try {
-    const response = await api.get('/api/auth/listar/')
+    const params = new URLSearchParams({ pagina: paginaActual.value })
+    if (buscar.value) params.append('buscar', buscar.value)
+
+    const response = await api.get(`/api/auth/listar/?${params}`)
     usuarios.value = response.data.usuarios
+    total.value = response.data.total
+    totalPaginas.value = response.data.total_paginas
   } catch (e) {
     console.error('Error cargando usuarios:', e)
   } finally {
     cargando.value = false
   }
+}
+
+function buscarTrabajadores() {
+  clearTimeout(timeoutBuscar)
+  timeoutBuscar = setTimeout(() => {
+    paginaActual.value = 1
+    cargarUsuarios()
+  }, 400)
+}
+
+function cambiarPagina(pagina) {
+  if (pagina < 1 || pagina > totalPaginas.value) return
+  paginaActual.value = pagina
+  cargarUsuarios()
 }
 
 function mostrarMensaje(texto, exito = true) {
@@ -275,4 +314,57 @@ async function cambiarRol(u, nuevoRol) {
 
 .exito { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
 .error { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+
+
+/* BUSCADOR */
+.buscador {
+  margin-bottom: 16px;
+}
+
+.input-buscar {
+  width: 100%;
+  max-width: 400px;
+  padding: 10px 14px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  outline: none;
+}
+
+.input-buscar:focus {
+  border-color: #1a3a6b;
+}
+
+/* PAGINACIÓN */
+.paginacion {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 20px;
+  background: white;
+  border-top: 1px solid #f0f0f0;
+}
+
+.btn-pagina {
+  padding: 8px 16px;
+  background: #1a3a6b;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.88rem;
+}
+
+.btn-pagina:disabled {
+  background: #cbd5e1;
+  cursor: not-allowed;
+}
+
+.pagina-info {
+  font-size: 0.88rem;
+  color: #555;
+}
+
+
 </style>

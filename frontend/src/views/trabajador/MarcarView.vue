@@ -115,7 +115,7 @@ const paso = ref('confirmar')
 const tipoMarcacion = ref('ENTRADA')
 
 let stream = null
-let intentosFallidos = 0
+// Sin MAX_INTENTOS local — el backend decide cuándo bloquear
 
 const fechaHora = computed(() => {
   return new Date().toLocaleString('es-PE', {
@@ -152,6 +152,15 @@ async function verificarTipoMarcacion() {
       resultado.value = {
         exito: false,
         mensaje: 'Ya registró su asistencia de entrada y salida de hoy'
+      }
+      return
+    }
+    const perfilResponse = await api.get('/api/auth/perfil/')
+    if (perfilResponse.data.bloqueado) {
+      paso.value = 'resultado'
+      resultado.value = {
+        exito: false,
+        mensaje: 'Su cuenta está bloqueada por intentos fallidos. Contacte al administrador.'
       }
       return
     }
@@ -214,7 +223,6 @@ async function intentarMarcacion() {
       mensaje: `${marcacion.tipo === 'ENTRADA' ? 'Entrada' : 'Salida'} registrada correctamente`,
       tipo: marcacion.tipo,
       estado: marcacion.estado,
-      similitud: response.data.similitud,
       hora: new Date(marcacion.fecha).toLocaleTimeString('es-PE', {
         hour: '2-digit', minute: '2-digit'
       })
@@ -223,51 +231,60 @@ async function intentarMarcacion() {
 
   } catch (e) {
     const errorMsg = e.response?.data?.error || ''
-    const status = e.response?.status
+    const httpStatus = e.response?.status
 
+    // Sin rostro o calidad baja — no cuenta como intento
     if (!e.response || errorMsg.includes('no se detectó') ||
-        errorMsg.includes('calidad') || errorMsg.includes('No se detectó')) {
-      mensajeEstado.value = 'No se detectó rostro. Acérquese más y presione de nuevo.'
+      errorMsg.includes('calidad') || errorMsg.includes('No se detectó')) {
+      mensajeEstado.value = 'No se detectó rostro. Acérquese más, mejore la iluminación y presione de nuevo.'
       detectando.value = false
       return
     }
 
+    // Ya marcó hoy
     if (errorMsg.includes('entrada y salida')) {
       detenerCamara()
       resultado.value = {
         exito: false,
-        mensaje: '✅ Ya registró su asistencia de entrada y salida de hoy'
+        mensaje: 'Ya registró su asistencia de entrada y salida de hoy'
       }
       paso.value = 'resultado'
       return
     }
 
-    if (status === 403) {
+    // 403 — bloqueado por IP o por intentos (lo decide el backend)
+    if (httpStatus === 403) {
       detenerCamara()
-      resultado.value = { exito: false, mensaje: errorMsg }
+      resultado.value = {
+        exito: false,
+        mensaje: errorMsg.includes('IP')
+          ? 'No puede marcar desde esta red. Conéctese a la red autorizada.'
+          : 'Usuario bloqueado por intentos fallidos. Contacte al administrador.'
+      }
       paso.value = 'resultado'
       return
     }
 
-    if (errorMsg.includes('no coincide') || status === 401) {
-      intentosFallidos++
+    // 401 — rostro no coincide, el backend indica cuántos intentos quedan
+    if (errorMsg.includes('no coincide') || httpStatus === 401) {
+      // Extraer intentos restantes del mensaje del backend
+      const match = errorMsg.match(/Intentos restantes: (\d+)/)
+      const restantes = match ? parseInt(match[1]) : null
 
-      if (intentosFallidos <= 2) {
+      if (restantes === null) {
         mensajeEstado.value = 'Rostro no coincide. Posiciónese bien y presione de nuevo.'
-      } else if (intentosFallidos === 3) {
-        mensajeEstado.value = '⚠️ Acérquese más y mejore la iluminación'
-      } else if (intentosFallidos === 4) {
+      } else if (restantes >= 4) {
+        mensajeEstado.value = 'Rostro no coincide. Posiciónese bien y presione de nuevo.'
+      } else if (restantes === 3) {
+        mensajeEstado.value = '⚠️ Acérquese más a la cámara y mejore la iluminación'
+      } else if (restantes === 2) {
         mensajeEstado.value = '⚠️ Mire de frente con buena iluminación'
-      } else if (intentosFallidos === 5) {
-        mensajeEstado.value = '🔴 Último intento — si falla contacte al administrador'
+      } else if (restantes === 1) {
+        mensajeEstado.value = '🔴 Último intento — si falla será bloqueado'
       } else {
-        detenerCamara()
-        resultado.value = {
-          exito: false,
-          mensaje: 'No se pudo verificar su identidad. Contacte al administrador.'
-        }
-        paso.value = 'resultado'
+        mensajeEstado.value = 'Rostro no coincide. Intente de nuevo.'
       }
+
       detectando.value = false
       return
     }
@@ -280,7 +297,6 @@ async function intentarMarcacion() {
 function reiniciar() {
   resultado.value = null
   errorCamara.value = ''
-  intentosFallidos = 0
   mensajeEstado.value = 'Centre su rostro frente a la cámara y presione el botón'
   verificarTipoMarcacion()
 }

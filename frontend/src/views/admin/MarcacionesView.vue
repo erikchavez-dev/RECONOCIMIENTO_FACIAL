@@ -9,7 +9,7 @@
         <h3>Marcaciones de Hoy</h3>
         <p class="fecha">Fecha: {{ fechaHoy }}</p>
       </div>
-      <button @click="cargarMarcaciones" class="btn-actualizar">🔄 Actualizar</button>
+      <button @click="cargarMarcaciones" class="btn-actualizar">Actualizar</button>
     </div>
 
     <div class="tabla-container">

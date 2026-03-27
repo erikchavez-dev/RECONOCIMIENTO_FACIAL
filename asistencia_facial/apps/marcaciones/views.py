@@ -293,7 +293,7 @@ class ReportePDFView(APIView):
         info_data = [
             ['Período:', f'{fecha_inicio} al {fecha_fin}'],
             ['Generado:', fecha_generacion],
-            ['Generado por:', f'{request.user.trabajador.nombres} {request.user.trabajador.apellido_paterno}'],
+            ['Generado por:', f'{request.user.trabajador.nombres} {request.user.trabajador.apellido_paterno} {request.user.trabajador.apellido_materno}'],
         ]
         if trabajador_id:
             try:

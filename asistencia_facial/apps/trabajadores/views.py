@@ -13,6 +13,7 @@ from django.contrib.auth.hashers import make_password
 from apps.usuarios.permissions import EsAdmin
 import os
 from django.conf import settings
+from django.db import models as db_models
 
 
 
@@ -21,9 +22,29 @@ class TrabajadorListarCrearView(APIView):
     permission_classes = [EsAdmin]
 
     def get(self, request):
-        trabajadores = Trabajador.objects.all().order_by('apellido_paterno')
+        queryset = Trabajador.objects.all().order_by('apellido_paterno')
+        # Búsqueda
+        buscar = request.query_params.get('buscar', '')
+        if buscar:
+            queryset = queryset.filter(
+                db_models.Q(dni__icontains=buscar) |
+                db_models.Q(nombres__icontains=buscar) |
+                db_models.Q(apellido_paterno__icontains=buscar)
+            )
+        # Paginación
+        pagina = int(request.query_params.get('pagina', 1))
+        por_pagina = 10
+        total = queryset.count()
+        inicio = (pagina - 1) * por_pagina
+        fin = inicio + por_pagina
+        trabajadores = queryset[inicio:fin]
         serializer = TrabajadorSerializer(trabajadores, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response({
+            'total': total,
+            'pagina': pagina,
+            'total_paginas': (total + por_pagina - 1) // por_pagina,
+            'trabajadores': serializer.data
+        }, status=status.HTTP_200_OK)
 
     def post(self, request):
         serializer = TrabajadorCrearSerializer(data=request.data)
@@ -131,38 +152,45 @@ class TrabajadorDetalleView(APIView):
                 {'error': 'Trabajador no encontrado'},
                 status=status.HTTP_404_NOT_FOUND
             )
-
-        # Verificar si tiene marcaciones registradas
-        forzar = request.data.get('forzar', False)
-        if trabajador.marcaciones.exists() and not forzar:
+        
+        from django.utils import timezone
+        hoy = timezone.now().date()
+        # Verificar condiciones para eliminar
+        puede_eliminar = False
+        razon = ''
+        if not trabajador.activo:
+            puede_eliminar = True
+            razon = 'inactivo'
+        elif trabajador.fecha_fin_laboral and trabajador.fecha_fin_laboral <= hoy:
+            puede_eliminar = True
+            razon = 'contrato finalizado'
+        if not puede_eliminar:
             return Response(
-                {'error': 'El trabajador tiene marcaciones registradas.', 'tiene_marcaciones': True},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
+            {
+                'error': 'Solo se puede eliminar un trabajador si está inactivo o su contrato ha finalizado.',
+                'puede_eliminar': False
+            },
+            status=status.HTTP_400_BAD_REQUEST
+        )
         nombre_completo = f'{trabajador.nombres} {trabajador.apellido_paterno}'
         dni = trabajador.dni
-        
-
-        # Eliminar usuario asociado primero
+        # Solo eliminar usuario — mantener marcaciones y auditoría
         try:
-            from apps.marcaciones.models import Marcacion
             from apps.auditoria.models import Auditoria
-
             usuario = Usuario.objects.get(trabajador=trabajador)
-            Auditoria.objects.filter(usuario=usuario).delete()
-            Marcacion.objects.filter(trabajador=trabajador).delete()
+            # Desvincular auditoría del usuario antes de eliminar
+            Auditoria.objects.filter(usuario=usuario).update(usuario=None)
             usuario.delete()
         except Usuario.DoesNotExist:
-            from apps.marcaciones.models import Marcacion
-            Marcacion.objects.filter(trabajador=trabajador).delete()
-            trabajador.delete()
-            registrar_auditoria(
-                usuario=request.user,
-                accion='ELIMINAR_TRABAJADOR',
-                descripcion=f'Trabajador eliminado: {nombre_completo} DNI: {dni}',
-                ip=request.META.get('REMOTE_ADDR', '0.0.0.0')
-                )
+            pass
+
+        trabajador.delete()
+        registrar_auditoria(
+            usuario=request.user,
+            accion='ELIMINAR_TRABAJADOR',
+            descripcion=f'Trabajador eliminado ({razon}): {nombre_completo} DNI: {dni}',
+            ip=request.META.get('REMOTE_ADDR', '0.0.0.0')
+        )
         return Response(
             {'mensaje': f'Trabajador {nombre_completo} eliminado correctamente'},
             status=status.HTTP_200_OK

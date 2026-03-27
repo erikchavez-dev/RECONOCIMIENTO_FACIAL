@@ -95,23 +95,16 @@
       <div class="grafico-seccion">
         <h3>Puntualidad del Mes — {{ stats.mes_actual?.mes }}</h3>
         <div class="grafico-container">
-          <svg viewBox="0 0 200 200" class="dona">
+         <svg viewBox="0 0 200 200" class="dona">
             <!-- Fondo gris -->
-            <circle cx="100" cy="100" r="70" fill="none" stroke="#e5e7eb" stroke-width="30"/>
-            <!-- Porcentaje puntual (verde) -->
-            <circle
-              cx="100" cy="100" r="70"
-              fill="none"
-              stroke="#22c55e"
-              stroke-width="30"
-              stroke-dasharray="439.82"
-              :stroke-dashoffset="439.82 - (439.82 * (stats.mes_actual?.porcentaje_puntualidad || 0) / 100)"
-              stroke-linecap="round"
-              transform="rotate(-90 100 100)"
-            />
+            <circle cx="100" cy="100" r="70" fill="none" stroke="#e5e7eb" stroke-width="30" />
+            <!-- Porcentaje puntual -->
+            <circle cx="100" cy="100" r="70" fill="none" stroke="#22c55e" stroke-width="30"
+              :stroke-dasharray="`${439.82 * (stats.mes_actual?.porcentaje_puntualidad || 0) / 100} 439.82`"
+              stroke-linecap="round" transform="rotate(-90 100 100)" />
             <!-- Texto central -->
             <text x="100" y="95" text-anchor="middle" font-size="28" font-weight="bold" fill="#1a3a6b">
-              {{ stats.mes_actual?.porcentaje_puntualidad }}%
+              {{ stats.mes_actual?.porcentaje_puntualidad || 0 }}%
             </text>
             <text x="100" y="118" text-anchor="middle" font-size="11" fill="#666">
               Puntual

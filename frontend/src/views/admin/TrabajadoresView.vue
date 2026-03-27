@@ -1,6 +1,12 @@
 <template>
   <AdminLayout titulo="Trabajadores">
 
+    <!-- BUSCADOR -->
+   <div class="buscador">
+      <input v-model="buscar" @input="buscarTrabajadores" type="text" placeholder="Buscar por DNI, nombre o apellido..."
+        class="input-buscar" />
+    </div>
+
     <div class="toolbar">
       <h3>Gestión de Trabajadores</h3>
       <button @click="abrirModalCrear" class="btn-nuevo">+ Nuevo Trabajador</button>
@@ -25,7 +31,7 @@
           <tr v-for="t in trabajadores" :key="t.id">
             <td>
               <img
-                :src="t.foto_url ? `http://127.0.0.1:8000${t.foto_url}` : '/sin-foto.png'"
+                :src="t.foto_url ? `${apiUrl}${t.foto_url}` : '/sin-foto.png'"
                 class="foto-trabajador"
                 alt="Foto"
               />
@@ -67,6 +73,19 @@
       </table>
     </div>
 
+  <!-- PAGINACIÓN -->
+    <div class="paginacion" v-if="totalPaginas > 1">
+      <button @click="cambiarPagina(paginaActual - 1)" :disabled="paginaActual === 1" class="btn-pagina">←
+        Anterior</button>
+
+      <span class="pagina-info">
+        Página {{ paginaActual }} de {{ totalPaginas }} ({{ total }} registros)
+      </span>
+
+      <button @click="cambiarPagina(paginaActual + 1)" :disabled="paginaActual === totalPaginas"
+        class="btn-pagina">Siguiente →</button>
+    </div>
+
     <!-- MODAL CREAR/EDITAR -->
     <div v-if="mostrarModal" class="modal-overlay" @click.self="cerrarModal">
       <div class="modal">
@@ -102,6 +121,10 @@
             <div class="campo">
               <label>Fecha inicio laboral</label>
               <input v-model="form.fecha_inicio_laboral" type="date" />
+            </div>
+            <div class="campo">
+              <label>Fecha fin laboral</label>
+              <input v-model="form.fecha_fin_laboral" type="date"/>
             </div>
             <div class="campo" v-if="!modoEdicion">
               <label>Rol</label>
@@ -204,10 +227,12 @@
 import iconoEditar from '@/assets/icon-lapicito.svg'
 import iconBasura from '@/assets/icon-basura.svg'
 
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, nextTick } from 'vue'
 import AdminLayout from '@/components/AdminLayout.vue'
 import api from '@/services/api'
 
+
+const apiUrl = import.meta.env.VITE_API_URL
 const trabajadores = ref([])
 const cargando = ref(true)
 const mostrarModal = ref(false)
@@ -224,9 +249,17 @@ const canvasRef = ref(null)
 const inputArchivo = ref(null)
 let stream = null
 
+// Paginación y búsqueda
+const buscar = ref('')
+const paginaActual = ref(1)
+const totalPaginas = ref(1)
+const total = ref(0)
+let timeoutBuscar = null
+
 const form = ref({
   nombres: '', apellido_paterno: '', apellido_materno: '',
   dni: '', telefono: '', cargo: '', fecha_inicio_laboral: '',
+  fecha_fin_laboral: '',
   rol: 'TRABAJADOR'
 })
 
@@ -237,13 +270,35 @@ onMounted(async () => {
 async function cargarTrabajadores() {
   cargando.value = true
   try {
-    const response = await api.get('/api/trabajadores/')
-    trabajadores.value = response.data
+    const params = new URLSearchParams({
+      pagina: paginaActual.value,
+    })
+    if (buscar.value) params.append('buscar', buscar.value)
+
+    const response = await api.get(`/api/trabajadores/?${params}`)
+    trabajadores.value = response.data.trabajadores
+    total.value = response.data.total
+    totalPaginas.value = response.data.total_paginas
   } catch (e) {
     console.error('Error:', e)
   } finally {
     cargando.value = false
   }
+}
+
+function buscarTrabajadores() {
+  // Esperar 400ms después de que el usuario deje de escribir
+  clearTimeout(timeoutBuscar)
+  timeoutBuscar = setTimeout(() => {
+    paginaActual.value = 1
+    cargarTrabajadores()
+  }, 400)
+}
+
+function cambiarPagina(pagina) {
+  if (pagina < 1 || pagina > totalPaginas.value) return
+  paginaActual.value = pagina
+  cargarTrabajadores()
 }
 
 function abrirModalCrear() {
@@ -253,7 +308,7 @@ function abrirModalCrear() {
   errorModal.value = ''
   form.value = {
     nombres: '', apellido_paterno: '', apellido_materno: '',
-    dni: '', telefono: '', cargo: '', fecha_inicio_laboral: '',
+    dni: '', telefono: '', cargo: '', fecha_inicio_laboral: '', fecha_fin_laboral: '',
     rol: 'TRABAJADOR'
   }
   mostrarModal.value = true
@@ -271,6 +326,7 @@ function abrirModalEditar(t) {
     telefono: t.telefono || '',
     cargo: t.cargo,
     fecha_inicio_laboral: t.fecha_inicio_laboral?.split('T')[0] || '',
+    fecha_fin_laboral: t.fecha_fin_laboral?.split('T')[0] || '',
     rol: 'TRABAJADOR'
   }
   errorModal.value = ''
@@ -286,21 +342,22 @@ function cerrarModal() {
 }
 
 async function siguientePaso() {
-  if (!form.value.nombres || !form.value.apellido_paterno || !form.value.dni || !form.value.cargo || !form.value.fecha_inicio_laboral) {
+  if (!form.value.nombres || !form.value.apellido_paterno || !form.value.dni || !form.value.cargo || !form.value.fecha_inicio_laboral || !form.value.fecha_fin_laboral) {
     errorModal.value = 'Complete todos los campos obligatorios'
     return
   }
   errorModal.value = ''
   paso.value = 2
-  // Iniciar cámara si está en modo cámara
+
   if (modoFoto.value === 'camara') {
+    await nextTick()
     await iniciarCamara()
   }
 }
 
-// Observar cambio de modo foto
 watch(modoFoto, async (nuevo) => {
   if (nuevo === 'camara') {
+    await nextTick
     await iniciarCamara()
   } else {
     detenerCamara()
@@ -368,8 +425,7 @@ async function guardar() {
     cerrarModal()
     await cargarTrabajadores()
   } catch (e) {
-    console.log('Error detallado:', e.response?.data)
-    errorModal.value = e.response?.data?.error || JSON.stringify(e.response?.data) || 'Error al procesar las fotos'
+    errorModal.value = e.response?.data?.error || JSON.stringify(e.response?.data) || 'Error al guardar'
   } finally {
     guardando.value = false
   }
@@ -384,7 +440,6 @@ async function guardarConFotos() {
   procesando.value = true
 
   try {
-    // 1. Crear trabajador
     const response = await api.post('/api/trabajadores/', {
       nombres: form.value.nombres,
       apellido_paterno: form.value.apellido_paterno,
@@ -396,23 +451,21 @@ async function guardarConFotos() {
     })
     const trabajador = response.data
 
-    // 2. Subir foto de perfil (primera foto)
     await api.post(`/api/trabajadores/${trabajador.id}/foto/`, {
       imagen: fotosCapturadas.value[0]
     })
 
-    // 3. Registrar embedding (3 fotos)
     await api.post('/api/reconocimiento/registrar-embedding/', {
       trabajador_id: trabajador.id,
       imagenes: fotosCapturadas.value
     })
 
-    // 4. Si el rol es ADMIN, actualizar el usuario
     if (form.value.rol === 'ADMIN') {
       const usuarios = await api.get('/api/auth/listar/')
-      const usuario = usuarios.data.usuarios.find(u => u.trabajador_id === trabajador.id || u.dni === trabajador.dni)
-      // El rol se asigna automáticamente como TRABAJADOR al crear
-      // Para cambiar a ADMIN necesitaríamos un endpoint adicional
+      const usuario = usuarios.data.usuarios.find(u => u.dni === trabajador.dni)
+      if (usuario) {
+        await api.patch(`/api/auth/cambiar-rol/${usuario.id}/`, { rol: 'ADMIN' })
+      }
     }
 
     detenerCamara()
@@ -420,6 +473,7 @@ async function guardarConFotos() {
     await cargarTrabajadores()
 
   } catch (e) {
+    console.log('Error detallado:', e.response?.data)
     errorModal.value = e.response?.data?.error || 'Error al procesar las fotos'
   } finally {
     procesando.value = false
@@ -437,33 +491,16 @@ async function toggleActivo(t) {
 
 async function eliminar(t) {
   if (!confirm(`¿Eliminar a ${t.nombres} ${t.apellido_paterno}?`)) return
-  
   try {
     await api.delete(`/api/trabajadores/${t.id}/`)
     await cargarTrabajadores()
   } catch (e) {
     const data = e.response?.data
-    
-    // Si tiene marcaciones preguntar si forzar
-    if (data?.tiene_marcaciones) {
-      const forzar = confirm(
-        `El trabajador ${t.nombres} ${t.apellido_paterno} tiene marcaciones registradas.\n\n` +
-        `¿Desea eliminarlo de todas formas junto con todas sus marcaciones?`
-      )
-      if (!forzar) return
-
-      try {
-        await api.delete(`/api/trabajadores/${t.id}/`, { data: { forzar: true } })
-        await cargarTrabajadores()
-      } catch (e2) {
-        alert(e2.response?.data?.error || 'Error al eliminar')
-      }
-    } else {
-      alert(data?.error || 'Error al eliminar')
-    }
+    alert(data?.error || 'Error al eliminar')
   }
 }
 </script>
+
 
 <style scoped>
 .toolbar {
@@ -839,6 +876,57 @@ input:focus + .slider-round {
   width: 26px;
   height: 26px;
   margin-right: 6px;
+}
+
+
+/* BUSCADOR */
+.buscador {
+  margin-bottom: 16px;
+}
+
+.input-buscar {
+  width: 100%;
+  max-width: 400px;
+  padding: 10px 14px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  outline: none;
+}
+
+.input-buscar:focus {
+  border-color: #1a3a6b;
+}
+
+/* PAGINACIÓN */
+.paginacion {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 20px;
+  background: white;
+  border-top: 1px solid #f0f0f0;
+}
+
+.btn-pagina {
+  padding: 8px 16px;
+  background: #1a3a6b;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.88rem;
+}
+
+.btn-pagina:disabled {
+  background: #cbd5e1;
+  cursor: not-allowed;
+}
+
+.pagina-info {
+  font-size: 0.88rem;
+  color: #555;
 }
 
 </style>

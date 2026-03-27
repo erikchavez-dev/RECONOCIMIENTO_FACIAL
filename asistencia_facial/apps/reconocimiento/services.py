@@ -73,7 +73,7 @@ def generar_embedding(imagen_base64):
     face = faces[0]
     det_score = face.det_score  # Score de confianza de detección (0 a 1)
 
-    if det_score < 0.7:
+    if det_score < 0.6:
         return None, f'Rostro detectado con baja calidad ({det_score:.2f}). Mejore la iluminación'
 
     embedding = face.embedding.tolist()
@@ -116,9 +116,7 @@ def generar_embedding_promedio(imagenes_base64):
 def comparar_embeddings(embedding1, embedding2, umbral):
     e1 = np.array(embedding1)
     e2 = np.array(embedding2)
-
     similitud = np.dot(e1, e2) / (np.linalg.norm(e1) * np.linalg.norm(e2))
-
     if similitud >= umbral:
         return True, float(similitud)
     return False, float(similitud)
