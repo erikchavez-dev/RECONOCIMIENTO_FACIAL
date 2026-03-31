@@ -144,10 +144,6 @@ const geoLongitud = ref(null)
 const geoEstado   = ref('obteniendo') // 'obteniendo' | 'ok' | 'denegado' | 'no-soportado'
 
 let stream = null
-<<<<<<< Updated upstream
-let intentosFallidos = 0
-=======
->>>>>>> Stashed changes
 
 const fechaHora = computed(() => {
   return new Date().toLocaleString('es-PE', {
@@ -223,8 +219,6 @@ async function verificarTipoMarcacion() {
       resultado.value = { exito: false, mensaje: 'Ya registró su asistencia de entrada y salida de hoy' }
       return
     }
-<<<<<<< Updated upstream
-=======
 
     const perfilResponse = await api.get('/api/auth/perfil/')
     if (perfilResponse.data.bloqueado) {
@@ -232,7 +226,6 @@ async function verificarTipoMarcacion() {
       resultado.value = { exito: false, mensaje: 'Su cuenta está bloqueada. Contacte al administrador.' }
       return
     }
->>>>>>> Stashed changes
 
     tipoMarcacion.value = entradaHoy ? 'SALIDA' : 'ENTRADA'
     paso.value = 'confirmar'
@@ -299,35 +292,16 @@ async function intentarMarcacion() {
     const ubicacion = response.data.ubicacion || {}
 
     resultado.value = {
-<<<<<<< Updated upstream
-      exito: true,
-      mensaje: `${marcacion.tipo === 'ENTRADA' ? 'Entrada' : 'Salida'} registrada correctamente`,
-      tipo: marcacion.tipo,
-      estado: marcacion.estado,
-      similitud: response.data.similitud,
-      hora: new Date(marcacion.fecha).toLocaleTimeString('es-PE', {
-        hour: '2-digit', minute: '2-digit'
-      })
-=======
       exito:    true,
       mensaje:  `${marcacion.tipo === 'ENTRADA' ? 'Entrada' : 'Salida'} registrada correctamente`,
       tipo:     marcacion.tipo,
       estado:   marcacion.estado,
       hora:     new Date(marcacion.fecha).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' }),
       ubicacion,
->>>>>>> Stashed changes
     }
     paso.value = 'resultado'
 
   } catch (e) {
-<<<<<<< Updated upstream
-    const errorMsg = e.response?.data?.error || ''
-    const status = e.response?.status
-
-    if (!e.response || errorMsg.includes('no se detectó') ||
-        errorMsg.includes('calidad') || errorMsg.includes('No se detectó')) {
-      mensajeEstado.value = 'No se detectó rostro. Acérquese más y presione de nuevo.'
-=======
     const errorMsg  = e.response?.data?.error || ''
     const httpStatus = e.response?.status
 
@@ -335,30 +309,17 @@ async function intentarMarcacion() {
     if (!e.response || errorMsg.includes('no se detectó') ||
         errorMsg.includes('calidad') || errorMsg.includes('No se detectó')) {
       mensajeEstado.value = 'No se detectó rostro. Acérquese más, mejore la iluminación y presione de nuevo.'
->>>>>>> Stashed changes
       detectando.value = false
       return
     }
 
     if (errorMsg.includes('entrada y salida')) {
       detenerCamara()
-<<<<<<< Updated upstream
-      resultado.value = {
-        exito: false,
-        mensaje: '✅ Ya registró su asistencia de entrada y salida de hoy'
-      }
-=======
       resultado.value = { exito: false, mensaje: 'Ya registró su asistencia de entrada y salida de hoy' }
->>>>>>> Stashed changes
       paso.value = 'resultado'
       return
     }
 
-<<<<<<< Updated upstream
-    if (status === 403) {
-      detenerCamara()
-      resultado.value = { exito: false, mensaje: errorMsg }
-=======
     // 403 — bloqueado por IP o por intentos
     if (httpStatus === 403) {
       detenerCamara()
@@ -370,24 +331,10 @@ async function intentarMarcacion() {
             ? 'Usuario bloqueado por intentos fallidos. Contacte al administrador.'
             : errorMsg,
       }
->>>>>>> Stashed changes
       paso.value = 'resultado'
       return
     }
 
-<<<<<<< Updated upstream
-    if (errorMsg.includes('no coincide') || status === 401) {
-      intentosFallidos++
-
-      if (intentosFallidos <= 2) {
-        mensajeEstado.value = 'Rostro no coincide. Posiciónese bien y presione de nuevo.'
-      } else if (intentosFallidos === 3) {
-        mensajeEstado.value = '⚠️ Acérquese más y mejore la iluminación'
-      } else if (intentosFallidos === 4) {
-        mensajeEstado.value = '⚠️ Mire de frente con buena iluminación'
-      } else if (intentosFallidos === 5) {
-        mensajeEstado.value = '🔴 Último intento — si falla contacte al administrador'
-=======
     // 401 — rostro no coincide
     if (errorMsg.includes('no coincide') || httpStatus === 401) {
       const match     = errorMsg.match(/Intentos restantes: (\d+)/)
@@ -401,7 +348,6 @@ async function intentarMarcacion() {
         mensajeEstado.value = '⚠️ Mire de frente con buena iluminación.'
       } else if (restantes === 1) {
         mensajeEstado.value = '🔴 Último intento — si falla será bloqueado.'
->>>>>>> Stashed changes
       } else {
         detenerCamara()
         resultado.value = {
