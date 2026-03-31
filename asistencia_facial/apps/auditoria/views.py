@@ -1,7 +1,6 @@
 """
 Vistas de la API de auditoria 
-Permite consultar los registros de auditoria, se crea una clase para listar la 
-auditoria en general y otra clase para mostrar un usuario específico
+Permite consultar los registros de auditoria con paginación y filtros
 """
 
 from rest_framework.views import APIView
@@ -10,19 +9,60 @@ from rest_framework import status
 from .models import Auditoria
 from .serializers import AuditoriaSerializer
 from apps.usuarios.permissions import EsAdmin
+from django.db import models as db_models
 
 
-
-#esta clase lista todos los registros de auditoria de manera ordenada
 class AuditoriaListarView(APIView):
     permission_classes = [EsAdmin]
 
     def get(self, request):
-        auditorias = Auditoria.objects.all().order_by('-fecha')
-        serializer = AuditoriaSerializer(auditorias, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        queryset = Auditoria.objects.select_related('usuario__trabajador').all().order_by('-fecha')
 
-#lo mismo que la clase anterior, pero esta lo hace de un usuario específico 
+        # Filtro por búsqueda general (usuario, acción, descripción)
+        buscar = request.query_params.get('buscar', '')
+        if buscar:
+            queryset = queryset.filter(
+                db_models.Q(accion__icontains=buscar) |
+                db_models.Q(descripcion__icontains=buscar) |
+                db_models.Q(usuario__username__icontains=buscar) |
+                db_models.Q(usuario__trabajador__nombres__icontains=buscar) |
+                db_models.Q(usuario__trabajador__apellido_paterno__icontains=buscar)
+            )
+
+        # Filtro por tipo de acción
+        accion = request.query_params.get('accion', '')
+        if accion:
+            queryset = queryset.filter(accion__icontains=accion)
+
+        # Filtro por fecha inicio
+        fecha_inicio = request.query_params.get('fecha_inicio', '')
+        if fecha_inicio:
+            queryset = queryset.filter(fecha__date__gte=fecha_inicio)
+
+        # Filtro por fecha fin
+        fecha_fin = request.query_params.get('fecha_fin', '')
+        if fecha_fin:
+            queryset = queryset.filter(fecha__date__lte=fecha_fin)
+
+        # Paginación
+        pagina    = int(request.query_params.get('pagina', 1))
+        por_pagina = 20
+        total     = queryset.count()
+        inicio    = (pagina - 1) * por_pagina
+        fin       = inicio + por_pagina
+
+        auditorias_paginadas = queryset[inicio:fin]
+        serializer = AuditoriaSerializer(auditorias_paginadas, many=True)
+
+        return Response({
+            'total': total,
+            'pagina': pagina,
+            'total_paginas': max(1, (total + por_pagina - 1) // por_pagina),
+            'por_pagina': por_pagina,
+            'auditorias': serializer.data
+        }, status=status.HTTP_200_OK)
+
+
 class AuditoriaUsuarioView(APIView):
     permission_classes = [EsAdmin]
 

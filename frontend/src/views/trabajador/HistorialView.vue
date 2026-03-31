@@ -13,6 +13,7 @@
       </div>
       <div class="header-right">
         <span class="nombre-usuario"><img :src="iconoPerfil" class="icono-perfil" />{{ auth.usuario?.nombre_completo }}</span>
+        <button @click="theme.toggle()" class="btn-tema" :title="theme.oscuro ? 'Tema claro' : 'Tema oscuro'">{{ theme.oscuro ? '☀️' : '🌙' }}</button>
         <button @click="handleLogout" class="btn-logout">⬅ Salir</button>
       </div>
     </header>
@@ -62,10 +63,12 @@ import iconoPerfil from '@/assets/icon-perfil.svg'
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useThemeStore } from '@/stores/theme'
 import api from '@/services/api'
 
 const router = useRouter()
 const auth = useAuthStore()
+const theme = useThemeStore()
 
 const marcaciones = ref([])
 const cargando = ref(true)

@@ -34,8 +34,8 @@
             <td>{{ t.dni }}</td>
             <td>{{ t.cargo }}</td>
             <td>
-              <span :class="['badge', t.activo ? 'badge-activo' : 'badge-inactivo']">
-                {{ t.activo ? 'Activo' : 'Inactivo' }}
+              <span :class="['badge', estadoBadgeClass(t)]">
+                {{ estadoBadgeTexto(t) }}
               </span>
             </td>
             <td>
@@ -49,12 +49,16 @@
                 <img :src="iconoEditar" alt="Editar" width="18" height="18" />
               </button>
 
-              <!-- INTERRUPTOR DE ACTIVACIÓN -->
-              <label class="switch-button">
-                <input type="checkbox" :checked="t.activo" @change="toggleActivo(t)">
-                <span class="slider-round"></span>
+              <!-- INTERRUPTOR: deshabilitado si contrato vencido -->
+              <label class="switch-button" :title="contratoVencido(t) ? 'Contrato vencido — no se puede activar' : ''">
+                <input
+                  type="checkbox"
+                  :checked="t.activo"
+                  :disabled="contratoVencido(t)"
+                  @change="toggleActivo(t)"
+                >
+                <span class="slider-round" :class="{ 'slider-disabled': contratoVencido(t) }"></span>
               </label>
-
 
               <!-- BOTÓN ELIMINAR -->
               <button @click="eliminar(t)" class="btn-accion delete" title="Eliminar">
@@ -426,7 +430,31 @@ async function guardarConFotos() {
   }
 }
 
+// Verifica si el contrato del trabajador ya venció
+function contratoVencido(t) {
+  if (!t.fecha_fin_laboral) return false
+  const hoy = new Date()
+  hoy.setHours(0, 0, 0, 0)
+  const fin = new Date(t.fecha_fin_laboral + 'T00:00:00')
+  return fin < hoy
+}
+
+// Clase CSS del badge de estado
+function estadoBadgeClass(t) {
+  if (contratoVencido(t)) return 'badge-vencido'
+  if (t.activo_efectivo) return 'badge-activo'
+  return 'badge-inactivo'
+}
+
+// Texto del badge de estado
+function estadoBadgeTexto(t) {
+  if (contratoVencido(t)) return 'Vencido'
+  if (t.activo_efectivo) return 'Activo'
+  return 'Inactivo'
+}
+
 async function toggleActivo(t) {
+  if (contratoVencido(t)) return
   try {
     await api.patch(`/api/trabajadores/${t.id}/activar-desactivar/`)
     await cargarTrabajadores()
@@ -529,6 +557,7 @@ async function eliminar(t) {
 
 .badge-activo { background: #dcfce7; color: #16a34a; }
 .badge-inactivo { background: #fee2e2; color: #dc2626; }
+.badge-vencido { background: #fef3c7; color: #b45309; }
 .badge-si { background: #dbeafe; color: #1d4ed8; }
 .badge-no { background: #f3f4f6; color: #6b7280; }
 
@@ -833,6 +862,12 @@ input:checked + .slider-round:before {
 /* Efecto de foco para accesibilidad */
 input:focus + .slider-round {
   box-shadow: 0 0 1px #ff7300;
+}
+
+/* Switch deshabilitado cuando contrato vencido */
+.slider-round.slider-disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .icono-camara {

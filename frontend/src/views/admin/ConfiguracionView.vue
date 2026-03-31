@@ -11,14 +11,44 @@
       <!-- HORARIOS DE ENTRADA -->
       <div class="seccion">
         <h3>Horarios de Entrada</h3>
+        <div class="horario-info">
+          <span class="horario-tag">Puntual</span> si llega antes de la hora fin entrada.
+          <span class="horario-tag tardanza">Tardanza</span> si llega después.
+        </div>
         <div class="form-grid">
           <div class="campo">
             <label>Hora inicio entrada</label>
-            <input v-model="form.hora_inicio_entrada" type="time" />
+            <div class="time-picker">
+              <select v-model="horasEntrada.inicio_h" class="sel-hora">
+                <option v-for="h in horas12" :key="h" :value="h">{{ h }}</option>
+              </select>
+              <span class="sep">:</span>
+              <select v-model="horasEntrada.inicio_m" class="sel-min">
+                <option v-for="m in minutos" :key="m" :value="m">{{ m }}</option>
+              </select>
+              <select v-model="horasEntrada.inicio_ampm" class="sel-ampm">
+                <option value="AM">AM</option>
+                <option value="PM">PM</option>
+              </select>
+            </div>
+            <span class="hint-hora">24h: {{ form.hora_inicio_entrada }}</span>
           </div>
           <div class="campo">
-            <label>Hora fin entrada</label>
-            <input v-model="form.hora_fin_entrada" type="time" />
+            <label>Hora fin entrada (límite puntualidad)</label>
+            <div class="time-picker">
+              <select v-model="horasEntrada.fin_h" class="sel-hora">
+                <option v-for="h in horas12" :key="h" :value="h">{{ h }}</option>
+              </select>
+              <span class="sep">:</span>
+              <select v-model="horasEntrada.fin_m" class="sel-min">
+                <option v-for="m in minutos" :key="m" :value="m">{{ m }}</option>
+              </select>
+              <select v-model="horasEntrada.fin_ampm" class="sel-ampm">
+                <option value="AM">AM</option>
+                <option value="PM">PM</option>
+              </select>
+            </div>
+            <span class="hint-hora">24h: {{ form.hora_fin_entrada }}</span>
           </div>
         </div>
       </div>
@@ -29,11 +59,37 @@
         <div class="form-grid">
           <div class="campo">
             <label>Hora inicio salida</label>
-            <input v-model="form.hora_inicio_salida" type="time" />
+            <div class="time-picker">
+              <select v-model="horasSalida.inicio_h" class="sel-hora">
+                <option v-for="h in horas12" :key="h" :value="h">{{ h }}</option>
+              </select>
+              <span class="sep">:</span>
+              <select v-model="horasSalida.inicio_m" class="sel-min">
+                <option v-for="m in minutos" :key="m" :value="m">{{ m }}</option>
+              </select>
+              <select v-model="horasSalida.inicio_ampm" class="sel-ampm">
+                <option value="AM">AM</option>
+                <option value="PM">PM</option>
+              </select>
+            </div>
+            <span class="hint-hora">24h: {{ form.hora_inicio_salida }}</span>
           </div>
           <div class="campo">
             <label>Hora fin salida</label>
-            <input v-model="form.hora_fin_salida" type="time" />
+            <div class="time-picker">
+              <select v-model="horasSalida.fin_h" class="sel-hora">
+                <option v-for="h in horas12" :key="h" :value="h">{{ h }}</option>
+              </select>
+              <span class="sep">:</span>
+              <select v-model="horasSalida.fin_m" class="sel-min">
+                <option v-for="m in minutos" :key="m" :value="m">{{ m }}</option>
+              </select>
+              <select v-model="horasSalida.fin_ampm" class="sel-ampm">
+                <option value="AM">AM</option>
+                <option value="PM">PM</option>
+              </select>
+            </div>
+            <span class="hint-hora">24h: {{ form.hora_fin_salida }}</span>
           </div>
         </div>
       </div>
@@ -97,7 +153,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch, reactive } from 'vue'
 import AdminLayout from '@/components/AdminLayout.vue'
 import api from '@/services/api'
 
@@ -118,10 +174,72 @@ const form = ref({
   max_intentos_faciales: 5
 })
 
+// Opciones para los selectores
+const horas12 = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'))
+const minutos = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'))
+
+// Estado reactivo de los selectores AM/PM
+const horasEntrada = reactive({ inicio_h: '07', inicio_m: '00', inicio_ampm: 'AM', fin_h: '08', fin_m: '00', fin_ampm: 'AM' })
+const horasSalida  = reactive({ inicio_h: '04', inicio_m: '00', inicio_ampm: 'PM', fin_h: '05', fin_m: '00', fin_ampm: 'PM' })
+
+// Convierte HH:MM (24h) a partes 12h
+function a12h(hora24) {
+  if (!hora24) return { h: '07', m: '00', ampm: 'AM' }
+  const [hStr, mStr] = hora24.split(':')
+  let h = parseInt(hStr)
+  const ampm = h >= 12 ? 'PM' : 'AM'
+  if (h === 0) h = 12
+  else if (h > 12) h -= 12
+  return { h: String(h).padStart(2, '0'), m: mStr || '00', ampm }
+}
+
+// Convierte partes 12h a HH:MM (24h)
+function a24h(h, m, ampm) {
+  let hNum = parseInt(h)
+  if (ampm === 'AM' && hNum === 12) hNum = 0
+  else if (ampm === 'PM' && hNum !== 12) hNum += 12
+  return `${String(hNum).padStart(2, '0')}:${m}`
+}
+
+// Cuando cambia cualquier selector → actualizar form (24h)
+watch(horasEntrada, () => {
+  form.value.hora_inicio_entrada = a24h(horasEntrada.inicio_h, horasEntrada.inicio_m, horasEntrada.inicio_ampm)
+  form.value.hora_fin_entrada    = a24h(horasEntrada.fin_h,    horasEntrada.fin_m,    horasEntrada.fin_ampm)
+}, { deep: true })
+
+watch(horasSalida, () => {
+  form.value.hora_inicio_salida = a24h(horasSalida.inicio_h, horasSalida.inicio_m, horasSalida.inicio_ampm)
+  form.value.hora_fin_salida    = a24h(horasSalida.fin_h,    horasSalida.fin_m,    horasSalida.fin_ampm)
+}, { deep: true })
+
+// Inicializar selectores desde el valor 24h del backend
+function inicializarSelectores() {
+  const ie = a12h(form.value.hora_inicio_entrada)
+  horasEntrada.inicio_h    = ie.h
+  horasEntrada.inicio_m    = ie.m
+  horasEntrada.inicio_ampm = ie.ampm
+
+  const fe = a12h(form.value.hora_fin_entrada)
+  horasEntrada.fin_h    = fe.h
+  horasEntrada.fin_m    = fe.m
+  horasEntrada.fin_ampm = fe.ampm
+
+  const is_ = a12h(form.value.hora_inicio_salida)
+  horasSalida.inicio_h    = is_.h
+  horasSalida.inicio_m    = is_.m
+  horasSalida.inicio_ampm = is_.ampm
+
+  const fs = a12h(form.value.hora_fin_salida)
+  horasSalida.fin_h    = fs.h
+  horasSalida.fin_m    = fs.m
+  horasSalida.fin_ampm = fs.ampm
+}
+
 onMounted(async () => {
   try {
     const response = await api.get('/api/configuracion/')
     form.value = { ...response.data }
+    inicializarSelectores()
   } catch (e) {
     error.value = 'Error al cargar la configuración'
   } finally {
@@ -134,11 +252,23 @@ async function guardar() {
   error.value = ''
   guardando.value = true
   try {
-    await api.patch('/api/configuracion/', form.value)
+    // Enviar solo los campos que acepta el serializer
+    const payload = {
+      hora_inicio_entrada:   form.value.hora_inicio_entrada,
+      hora_fin_entrada:      form.value.hora_fin_entrada,
+      hora_inicio_salida:    form.value.hora_inicio_salida,
+      hora_fin_salida:       form.value.hora_fin_salida,
+      umbral_similitud:      form.value.umbral_similitud,
+      ip_autorizada:         form.value.ip_autorizada,
+      control_ip_activo:     form.value.control_ip_activo,
+      max_intentos:          form.value.max_intentos,
+      max_intentos_faciales: form.value.max_intentos_faciales,
+    }
+    await api.patch('/api/configuracion/', payload)
     exito.value = 'Configuración guardada correctamente'
     setTimeout(() => exito.value = '', 3000)
   } catch (e) {
-    error.value = e.response?.data?.error || 'Error al guardar la configuración'
+    error.value = e.response?.data?.error || JSON.stringify(e.response?.data) || 'Error al guardar la configuración'
   } finally {
     guardando.value = false
   }
@@ -284,4 +414,66 @@ async function guardar() {
 
 .btn-guardar:hover:not(:disabled) { background: #142d54; }
 .btn-guardar:disabled { opacity: 0.7; cursor: not-allowed; }
+
+/* TIME PICKER 12H */
+.time-picker {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sel-hora, .sel-min, .sel-ampm {
+  padding: 7px 6px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  color: #1a3a6b;
+  font-weight: 600;
+  cursor: pointer;
+  background: white;
+}
+
+.sel-hora  { width: 58px; }
+.sel-min   { width: 58px; }
+.sel-ampm  { width: 62px; }
+
+.sel-hora:focus, .sel-min:focus, .sel-ampm:focus {
+  outline: none;
+  border-color: #1a3a6b;
+}
+
+.sep {
+  font-weight: bold;
+  color: #1a3a6b;
+  font-size: 1rem;
+}
+
+.hint-hora {
+  font-size: 0.72rem;
+  color: #9ca3af;
+  margin-top: 3px;
+  display: block;
+}
+
+/* HORARIO INFO */
+.horario-info {
+  font-size: 0.82rem;
+  color: #6b7280;
+  margin-bottom: 14px;
+}
+
+.horario-tag {
+  display: inline-block;
+  background: #dcfce7;
+  color: #16a34a;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.76rem;
+}
+
+.horario-tag.tardanza {
+  background: #fef9c3;
+  color: #ca8a04;
+}
 </style>

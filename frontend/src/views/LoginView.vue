@@ -23,6 +23,8 @@
             type="text"
             placeholder="Ingrese su DNI"
             maxlength="8"
+            autocomplete="username"
+            name="username"
             @keyup.enter="handleLogin"
             />
           </div>
@@ -35,6 +37,8 @@
               v-model="password"
               :type="mostrarPassword ? 'text' : 'password'"
               placeholder="Ingrese su contraseña"
+              autocomplete="current-password"
+              name="password"
               @keyup.enter="handleLogin"
             />
             <button

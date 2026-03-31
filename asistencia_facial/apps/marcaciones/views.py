@@ -13,10 +13,11 @@ from reportlab.lib.units import cm
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from zoneinfo import ZoneInfo
-from datetime import datetime
+from datetime import datetime, timedelta
 from django.utils import timezone
 from apps.trabajadores.models import Trabajador
 from apps.usuarios.permissions import EsAdmin
+from rest_framework.permissions import IsAuthenticated
 
 
 
@@ -464,4 +465,221 @@ class EstadisticasDashboardView(APIView):
                 'tardanzas': tardanzas_mes,
                 'porcentaje_puntualidad': porcentaje_puntualidad,
             }
+        }, status=status.HTTP_200_OK)
+
+DIAS_SEMANA = {
+    0: 'Lunes', 1: 'Martes', 2: 'Miércoles',
+    3: 'Jueves', 4: 'Viernes', 5: 'Sábado', 6: 'Domingo'
+}
+
+MESES_ES = {
+    1: 'enero', 2: 'febrero', 3: 'marzo', 4: 'abril',
+    5: 'mayo', 6: 'junio', 7: 'julio', 8: 'agosto',
+    9: 'septiembre', 10: 'octubre', 11: 'noviembre', 12: 'diciembre'
+}
+
+
+def calcular_tiempo_trabajado(entrada_dt, salida_dt):
+    """
+    Calcula el tiempo trabajado entre entrada y salida.
+    Retorna string con formato HH:MM:SS
+    """
+    if not entrada_dt or not salida_dt:
+        return None
+    delta = salida_dt - entrada_dt
+    total_segundos = int(delta.total_seconds())
+    if total_segundos < 0:
+        return None
+    horas = total_segundos // 3600
+    minutos = (total_segundos % 3600) // 60
+    segundos = total_segundos % 60
+    return f'{horas:02d}:{minutos:02d}:{segundos:02d}'
+
+
+def agrupar_marcaciones_por_dia(marcaciones_qs):
+    """
+    Agrupa marcaciones por día y calcula:
+    - entrada, salida, estado, tiempo trabajado
+    - resultado: ASISTIÓ, TARDANZA, FALTA
+    """
+    dias = {}
+
+    for m in marcaciones_qs:
+        fecha_local = timezone.localtime(m.fecha)
+        dia_key = fecha_local.date().isoformat()
+
+        if dia_key not in dias:
+            dias[dia_key] = {
+                'fecha': dia_key,
+                'dia_semana': DIAS_SEMANA[fecha_local.weekday()],
+                'dia_texto': f"{DIAS_SEMANA[fecha_local.weekday()]} {fecha_local.day} de {MESES_ES[fecha_local.month]}",
+                'entrada': None,
+                'entrada_hora': None,
+                'entrada_estado': None,  # PUNTUAL o TARDANZA
+                'salida': None,
+                'salida_hora': None,
+                'tiempo_trabajado': None,
+                'resultado': 'FALTA',
+            }
+
+        if m.tipo == 'ENTRADA' and not dias[dia_key]['entrada']:
+            dias[dia_key]['entrada'] = fecha_local.isoformat()
+            dias[dia_key]['entrada_hora'] = fecha_local.strftime('%I:%M:%S %p')
+            dias[dia_key]['entrada_estado'] = m.estado  # PUNTUAL o TARDANZA
+
+        if m.tipo == 'SALIDA' and not dias[dia_key]['salida']:
+            dias[dia_key]['salida'] = fecha_local.isoformat()
+            dias[dia_key]['salida_hora'] = fecha_local.strftime('%I:%M:%S %p')
+
+    # Calcular tiempo trabajado y resultado por día
+    for dia_key, dia in dias.items():
+        entrada_dt = datetime.fromisoformat(dia['entrada']) if dia['entrada'] else None
+        salida_dt  = datetime.fromisoformat(dia['salida'])  if dia['salida']  else None
+
+        dia['tiempo_trabajado'] = calcular_tiempo_trabajado(entrada_dt, salida_dt)
+
+        if dia['entrada'] and dia['salida']:
+            if dia['entrada_estado'] == 'TARDANZA':
+                dia['resultado'] = 'TARDANZA'
+            else:
+                dia['resultado'] = 'ASISTIÓ'
+        elif dia['entrada'] and not dia['salida']:
+            dia['resultado'] = 'SIN SALIDA'
+        else:
+            dia['resultado'] = 'FALTA'
+
+    # Ordenar por fecha descendente
+    return sorted(dias.values(), key=lambda x: x['fecha'], reverse=True)
+
+
+class AsistenciaResumenView(APIView):
+    """
+    Vista de asistencia agrupada por día para el TRABAJADOR.
+    Muestra su propio resumen del mes actual o rango de fechas.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        trabajador_id = request.user.trabajador.id
+
+        # Rango de fechas — por defecto mes actual
+        ahora_local  = timezone.localtime(timezone.now())
+        lima_tz      = ZoneInfo('America/Lima')
+
+        fecha_inicio = request.query_params.get('fecha_inicio')
+        fecha_fin    = request.query_params.get('fecha_fin')
+
+        if fecha_inicio and fecha_fin:
+            try:
+                inicio = datetime.strptime(fecha_inicio, '%Y-%m-%d').replace(
+                    hour=0, minute=0, second=0, tzinfo=lima_tz)
+                fin = datetime.strptime(fecha_fin, '%Y-%m-%d').replace(
+                    hour=23, minute=59, second=59, tzinfo=lima_tz)
+            except ValueError:
+                return Response({'error': 'Formato de fecha inválido. Use YYYY-MM-DD'},
+                                status=status.HTTP_400_BAD_REQUEST)
+        else:
+            inicio = ahora_local.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            fin    = ahora_local.replace(hour=23, minute=59, second=59, microsecond=999999)
+
+        marcaciones = Marcacion.objects.filter(
+            trabajador_id=trabajador_id,
+            fecha__gte=inicio,
+            fecha__lte=fin,
+            exitoso=True
+        ).order_by('fecha')
+
+        dias = agrupar_marcaciones_por_dia(marcaciones)
+
+        # Estadísticas del período
+        total_dias  = len(dias)
+        asistencias = sum(1 for d in dias if d['resultado'] in ('ASISTIÓ', 'TARDANZA'))
+        tardanzas   = sum(1 for d in dias if d['resultado'] == 'TARDANZA')
+        faltas      = sum(1 for d in dias if d['resultado'] == 'FALTA')
+
+        return Response({
+            'periodo': {
+                'inicio': fecha_inicio or inicio.date().isoformat(),
+                'fin':    fecha_fin    or fin.date().isoformat(),
+            },
+            'resumen': {
+                'total_dias': total_dias,
+                'asistencias': asistencias,
+                'tardanzas': tardanzas,
+                'faltas': faltas,
+            },
+            'dias': dias
+        }, status=status.HTTP_200_OK)
+
+
+class AsistenciaAdminView(APIView):
+    """
+    Vista de asistencia agrupada por día para el ADMIN.
+    Puede ver a cualquier trabajador por trabajador_id.
+    """
+    permission_classes = [EsAdmin]
+
+    def get(self, request):
+        trabajador_id = request.query_params.get('trabajador_id')
+        if not trabajador_id:
+            return Response({'error': 'trabajador_id es requerido'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            trabajador = Trabajador.objects.get(pk=trabajador_id)
+        except Trabajador.DoesNotExist:
+            return Response({'error': 'Trabajador no encontrado'},
+                            status=status.HTTP_404_NOT_FOUND)
+
+        lima_tz     = ZoneInfo('America/Lima')
+        ahora_local = timezone.localtime(timezone.now())
+
+        fecha_inicio = request.query_params.get('fecha_inicio')
+        fecha_fin    = request.query_params.get('fecha_fin')
+
+        if fecha_inicio and fecha_fin:
+            try:
+                inicio = datetime.strptime(fecha_inicio, '%Y-%m-%d').replace(
+                    hour=0, minute=0, second=0, tzinfo=lima_tz)
+                fin = datetime.strptime(fecha_fin, '%Y-%m-%d').replace(
+                    hour=23, minute=59, second=59, tzinfo=lima_tz)
+            except ValueError:
+                return Response({'error': 'Formato de fecha inválido. Use YYYY-MM-DD'},
+                                status=status.HTTP_400_BAD_REQUEST)
+        else:
+            inicio = ahora_local.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            fin    = ahora_local.replace(hour=23, minute=59, second=59, microsecond=999999)
+
+        marcaciones = Marcacion.objects.filter(
+            trabajador_id=trabajador_id,
+            fecha__gte=inicio,
+            fecha__lte=fin,
+            exitoso=True
+        ).order_by('fecha')
+
+        dias = agrupar_marcaciones_por_dia(marcaciones)
+
+        total_dias  = len(dias)
+        asistencias = sum(1 for d in dias if d['resultado'] in ('ASISTIÓ', 'TARDANZA'))
+        tardanzas   = sum(1 for d in dias if d['resultado'] == 'TARDANZA')
+        faltas      = sum(1 for d in dias if d['resultado'] == 'FALTA')
+
+        return Response({
+            'trabajador': {
+                'id': trabajador.id,
+                'nombre': f'{trabajador.nombres} {trabajador.apellido_paterno} {trabajador.apellido_materno}',
+                'dni': trabajador.dni,
+                'cargo': trabajador.cargo,
+            },
+            'periodo': {
+                'inicio': fecha_inicio or inicio.date().isoformat(),
+                'fin':    fecha_fin    or fin.date().isoformat(),
+            },
+            'resumen': {
+                'total_dias': total_dias,
+                'asistencias': asistencias,
+                'tardanzas': tardanzas,
+                'faltas': faltas,
+            },
+            'dias': dias
         }, status=status.HTTP_200_OK)
