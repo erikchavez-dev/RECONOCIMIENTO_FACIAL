@@ -1,44 +1,57 @@
-<!-- HistorialView.vue — Historial de marcaciones del trabajador -->
-<!-- Lista vertical con fecha, hora, tipo y estado -->
-<!-- Ordenado del más reciente al más antiguo -->
-
 <template>
-  <div class="historial">
+  <div class="panel" :class="{ light: !theme.oscuro }">
 
     <!-- HEADER -->
-    <header class="header">
+    <header class="header-bar">
       <div class="header-left">
         <img src="/sgd_logo.webp" alt="Logo" class="logo" />
         <span class="sistema-nombre">Sistema de Control de Asistencia</span>
       </div>
       <div class="header-right">
-        <span class="nombre-usuario"><img :src="iconoPerfil" class="icono-perfil" />{{ auth.usuario?.nombre_completo }}</span>
-        <button @click="theme.toggle()" class="btn-tema" :title="theme.oscuro ? 'Tema claro' : 'Tema oscuro'">{{ theme.oscuro ? '☀️' : '🌙' }}</button>
+        <span class="nombre-chip">
+          <img :src="iconoPerfil" class="icono-perfil" />
+          {{ auth.usuario?.nombre_completo }}
+        </span>
+        <button @click="theme.toggle()" class="btn-sm" :title="theme.oscuro ? 'Tema claro' : 'Tema oscuro'">
+          <img :src="theme.oscuro ? iconoSol : iconoLuna" alt="Icono Tema" class="icono-btn" />
+        </button>
         <button @click="handleLogout" class="btn-logout">⬅ Salir</button>
       </div>
     </header>
 
     <!-- CONTENIDO -->
-    <main class="main">
+    <main class="content">
       <div class="titulo-seccion">
         <button @click="$router.push('/trabajador/panel')" class="btn-volver">← Volver</button>
         <h2>Mi Historial de Marcaciones</h2>
       </div>
 
       <!-- CARGANDO -->
-      <div v-if="cargando" class="cargando">Cargando...</div>
+      <div v-if="cargando" class="estado-msg">
+        <span class="estado-spinner"><img :src="relojArena" class="reloj-arena" alt="Reloj"/></span>
+        Cargando historial...
+      </div>
 
       <!-- ERROR -->
-      <div v-else-if="error" class="error">{{ error }}</div>
+      <div v-else-if="error" class="error-box">{{ error }}</div>
 
       <!-- LISTA -->
       <div v-else-if="marcaciones.length > 0" class="lista">
         <div v-for="m in marcaciones" :key="m.id" class="marcacion-item">
-          <div class="marcacion-fecha">
-            <span class="fecha">{{ formatearFecha(m.fecha) }}</span>
-            <span class="hora">{{ formatearHora(m.fecha) }}</span>
+
+          <!-- Ícono lateral por tipo -->
+          <div :class="['item-icono', m.tipo === 'ENTRADA' ? 'icono-entrada' : 'icono-salida']">
+            {{ m.tipo === 'ENTRADA' ? '↗' : '↙' }}
           </div>
-          <div class="marcacion-badges">
+
+          <!-- Fecha y hora -->
+          <div class="item-fecha">
+            <span class="fecha-txt">{{ formatearFecha(m.fecha) }}</span>
+            <span class="hora-txt">{{ formatearHora(m.fecha) }}</span>
+          </div>
+
+          <!-- Badges -->
+          <div class="item-badges">
             <span :class="['badge', m.tipo === 'ENTRADA' ? 'badge-entrada' : 'badge-salida']">
               {{ m.tipo }}
             </span>
@@ -50,8 +63,9 @@
       </div>
 
       <!-- SIN MARCACIONES -->
-      <div v-else class="vacio">
-        No hay marcaciones registradas
+      <div v-else class="estado-msg">
+        <span class="estado-emoji"></span>
+        <span>No hay marcaciones registradas</span>
       </div>
 
     </main>
@@ -60,6 +74,10 @@
 
 <script setup>
 import iconoPerfil from '@/assets/icon-perfil.svg'
+import iconoLuna from '@/assets/icon-luna.svg'
+import iconoSol from '@/assets/icon-sol.svg'
+import relojArena from '@/assets/reloj-de-arena.webp'
+
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
@@ -67,12 +85,12 @@ import { useThemeStore } from '@/stores/theme'
 import api from '@/services/api'
 
 const router = useRouter()
-const auth = useAuthStore()
-const theme = useThemeStore()
+const auth   = useAuthStore()
+const theme  = useThemeStore()
 
 const marcaciones = ref([])
-const cargando = ref(true)
-const error = ref('')
+const cargando    = ref(true)
+const error       = ref('')
 
 onMounted(async () => {
   try {
@@ -88,7 +106,7 @@ onMounted(async () => {
 
 function formatearFecha(fecha) {
   return new Date(fecha).toLocaleDateString('es-PE', {
-    year: 'numeric', month: '2-digit', day: '2-digit'
+    weekday: 'short', year: 'numeric', month: '2-digit', day: '2-digit'
   })
 }
 
@@ -105,164 +123,319 @@ async function handleLogout() {
 </script>
 
 <style scoped>
+/* ── TEMA OSCURO (defecto) ── */
+.panel {
+  --bg-main: #141416cc;
+  --bg-card: #141416;
+  --bg-soft: rgba(255,255,255,0.08);
+  --text-main: #fcfcfd;
+  --text-soft: rgba(255,255,255,0.6);
+  --border-color: #232327;
+  --accent: #18c440;
 
-.icono-perfil {
-  width: 20px;
-  height: 20px;
-  margin-right: 6px;
-}
-
-
-.historial {
   min-height: 100vh;
-  background-color: #f0f4f8;
   display: flex;
   flex-direction: column;
+  background-color: var(--bg-main);
+  color: var(--text-main);
 }
 
-.header {
-  background-color: #1a3a6b;
-  padding: 12px 24px;
+/* ── TEMA CLARO ── */
+.panel.light {
+  --bg-main: #f8fafc;
+  --bg-card: #ffffff;
+  --bg-soft: #f1f5f9;
+  --text-main: #0f172a;
+  --text-soft: #64748b;
+  --border-color: #e2e8f0;
+  --accent: #2563eb;
+}
+
+/* ── HEADER ── */
+.header-bar {
+  position: relative;
+  z-index: 10;
   display: flex;
-  align-items: center;
   justify-content: space-between;
-}
-
-.header-left {
-  display: flex;
   align-items: center;
-  gap: 10px;
+  padding: 12px 28px;
+  border-bottom: 2px solid var(--accent);
+  background: var(--bg-card);
 }
+.header-left { display: flex; align-items: center; gap: 10px; }
+.header-right { display: flex; align-items: center; gap: 10px; }
 
-.logo {
-  width: 180px;
-  height: 60px;
-  object-fit: contain;
-}
+.logo { width: 150px; height: 50px; object-fit: contain; }
 
 .sistema-nombre {
-  color: white;
-  font-weight: bold;
-  font-size: 1.4em;
+  color: var(--text-main);
+  font-weight: 600;
+  font-size: 0.95rem;
+  opacity: 0.9;
 }
 
-.header-right {
+.nombre-chip {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 6px;
+  color: var(--text-main);
+  font-size: 0.82rem;
+  background: var(--bg-soft);
+  padding: 9px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
 }
+.icono-perfil { width: 18px; height: 18px; }
 
-.nombre-usuario {
-  color: white;
-  font-size: 0.9rem;
+.btn-sm {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 25px;
+  cursor: pointer;
+  background: var(--bg-soft);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  transition: background 0.2s;
 }
+.btn-sm:hover { background: var(--accent); }
+.icono-btn { width: 18px; height: 18px; display: block; }
 
 .btn-logout {
-  background: transparent;
-  border: 1px solid white;
-  color: white;
-  padding: 6px 14px;
+  background: red;
+  border: 1px solid rgba(255,255,255,0.35);
+  color: #ffffff;
+  padding: 9px 42px;
   border-radius: 6px;
   cursor: pointer;
-  font-size: 0.85rem;
-  transition: all 0.2s;
+  font-size: 0.82rem;
 }
+.btn-logout:hover { background: #000000; color: #ff0000; }
 
-.btn-logout:hover {
+.panel.light .header-bar {
   background: white;
-  color: #1a3a6b;
+  border-bottom: 1px solid var(--border-color);
 }
 
-.main {
+/* ── CONTENT ── */
+.content {
+  position: relative;
+  z-index: 10;
   flex: 1;
-  padding: 32px 24px;
-  max-width: 700px;
-  margin: 0 auto;
+  padding: 28px 32px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  background-color: var(--bg-main);
+  max-width: 760px;
   width: 100%;
+  margin: 0 auto;
+  box-sizing: border-box;
 }
 
+/* ── TÍTULO ── */
 .titulo-seccion {
   display: flex;
   align-items: center;
   gap: 16px;
-  margin-bottom: 24px;
 }
-
 .btn-volver {
-  background: none;
-  border: none;
-  color: #1a3a6b;
-  font-size: 0.95rem;
-  cursor: pointer;
+  background: var(--bg-soft);
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  font-size: 0.9rem;
   font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
+.btn-volver:hover { border-color: var(--accent); color: var(--accent); }
 
 h2 {
   font-size: 1.3rem;
-  color: #1a3a6b;
+  font-weight: 700;
+  color: var(--text-main);
+  margin: 0;
+}
+.reloj-arena {
+  height: 30px;
+  width: 30px;
 }
 
+/* ── LISTA ── */
 .lista {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
+/* ── ITEM DE MARCACIÓN ── */
 .marcacion-item {
-  background: white;
-  border-radius: 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
   padding: 16px 20px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 16px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+.marcacion-item:hover {
+  transform: translateX(5px);
+  border-color: var(--accent);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+}
+.panel.light .marcacion-item {
   box-shadow: 0 2px 8px rgba(0,0,0,0.06);
 }
+.panel.light .marcacion-item:hover {
+  box-shadow: 0 6px 18px rgba(0,0,0,0.1);
+}
 
-.marcacion-fecha {
+/* ── ÍCONO LATERAL ── */
+.item-icono {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+.icono-entrada {
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.25);
+}
+.icono-salida {
+  background: rgba(148, 163, 184, 0.12);
+  color: var(--text-soft);
+  border: 1px solid var(--border-color);
+}
+.panel.light .icono-entrada {
+  background: #dbeafe;
+  color: #1d4ed8;
+  border-color: #bfdbfe;
+}
+.panel.light .icono-salida {
+  background: #f1f5f9;
+  color: #64748b;
+  border-color: #e2e8f0;
+}
+
+/* ── FECHA Y HORA ── */
+.item-fecha {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
+  flex: 1;
 }
-
-.fecha {
-  font-size: 0.95rem;
-  color: #333;
+.fecha-txt {
+  font-size: 0.92rem;
+  color: var(--text-main);
   font-weight: 600;
+  text-transform: capitalize;
+}
+.hora-txt {
+  font-family: monospace;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.5px;
 }
 
-.hora {
-  font-size: 0.85rem;
-  color: #666;
-}
-
-.marcacion-badges {
+/* ── BADGES ── */
+.item-badges {
   display: flex;
   gap: 8px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .badge {
-  padding: 4px 12px;
+  padding: 5px 14px;
   border-radius: 20px;
-  font-size: 0.78rem;
-  font-weight: 600;
+  font-size: 0.73rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
 }
 
-.badge-entrada { background: #dbeafe; color: #1d4ed8; }
-.badge-salida { background: #f3f4f6; color: #374151; }
-.badge-puntual { background: #dcfce7; color: #16a34a; }
-.badge-tardanza { background: #fef9c3; color: #ca8a04; }
+/* oscuro */
+.badge-entrada  { background: rgba(59,130,246,0.18);  color: #60a5fa; }
+.badge-salida   { background: rgba(148,163,184,0.15); color: var(--text-soft); }
+.badge-puntual  { background: rgba(24,196,64,0.18);   color: #4ade80; }
+.badge-tardanza { background: rgba(251,191,36,0.18);  color: #fbbf24; }
 
-.cargando, .vacio {
+/* claro */
+.panel.light .badge-entrada  { background: #dbeafe; color: #1d4ed8; }
+.panel.light .badge-salida   { background: #f3f4f6; color: #374151; }
+.panel.light .badge-puntual  { background: #dcfce7; color: #16a34a; }
+.panel.light .badge-tardanza { background: #fef9c3; color: #ca8a04; }
+
+/* ── ESTADOS ── */
+.estado-msg {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 60px 20px;
+  color: var(--text-soft);
+  font-size: 0.95rem;
   text-align: center;
-  color: #666;
-  padding: 40px;
 }
+.estado-emoji { font-size: 2.5rem; }
+.estado-spinner { font-size: 2rem; }
 
-.error {
+.error-box {
+  background: rgba(239,68,68,0.1);
+  color: #f87171;
+  border: 1px solid rgba(239,68,68,0.25);
+  padding: 14px 18px;
+  border-radius: 10px;
+  text-align: center;
+  font-size: 0.9rem;
+}
+.panel.light .error-box {
   background: #fef2f2;
   color: #dc2626;
-  padding: 12px;
-  border-radius: 8px;
-  text-align: center;
+  border-color: #fecaca;
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 768px) {
+  .header-bar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 16px;
+  }
+  .header-right { width: 100%; justify-content: space-between; }
+  .logo { width: 110px; height: auto; }
+  .sistema-nombre { font-size: 0.8rem; }
+  .nombre-chip { padding: 6px 10px; font-size: 0.75rem; }
+  .btn-logout { padding: 6px 12px; font-size: 0.75rem; }
+
+  .content { padding: 16px; gap: 14px; }
+  h2 { font-size: 1.1rem; }
+
+  .marcacion-item {
+    padding: 12px 14px;
+    gap: 12px;
+    border-radius: 12px;
+  }
+  .marcacion-item:hover { transform: none; }
+
+  .item-icono { width: 36px; height: 36px; font-size: 0.95rem; border-radius: 10px; }
+  .fecha-txt { font-size: 0.82rem; }
+  .hora-txt  { font-size: 0.88rem; }
+
+  .badge { font-size: 0.65rem; padding: 4px 10px; }
+
+  .item-badges { gap: 6px; }
 }
 </style>

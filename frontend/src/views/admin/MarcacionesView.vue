@@ -9,7 +9,7 @@
         <h3>Marcaciones de Hoy</h3>
         <p class="fecha">Fecha: {{ fechaHoy }}</p>
       </div>
-      <button @click="cargarMarcaciones" class="btn-actualizar">🔄 Actualizar</button>
+      <button @click="cargarMarcaciones" class="btn-actualizar">Actualizar</button>
     </div>
 
     <div class="tabla-container">
@@ -100,27 +100,36 @@ function formatearHora(fecha) {
 }
 
 .toolbar h3 {
-  font-size: 1.1rem;
+  font-size: 1.45em;
+  font-weight: 700;
   color: #1a3a6b;
 }
 
 .fecha {
-  font-size: 0.85rem;
+  font-size: 1.03em;
   color: #666;
   margin-top: 4px;
 }
 
 .btn-actualizar {
-  background: #1a3a6b;
-  color: white;
+  background: #08c22a;
+  color: rgb(255, 255, 255);
+  font-size: 1.01em;
+  font-weight: 600;
   border: none;
-  padding: 10px 20px;
+  padding: 11px 29px;
   border-radius: 6px;
   cursor: pointer;
-  font-size: 0.9rem;
 }
 
-.btn-actualizar:hover { background: #142d54; }
+.btn-actualizar:hover {
+  background: #4a7ac2;
+  color: #fff;
+}
+
+.btn-actualizar:disabled {
+  opacity: 0.6;
+}
 
 .tabla-container {
   background: white;
@@ -174,4 +183,38 @@ function formatearHora(fecha) {
   padding: 40px;
   color: #666;
 }
+
+/* para el responsive */
+@media (max-width: 768px) {
+  .toolbar {
+    display: flex;
+    flex-direction: column; 
+    gap: 15px;            
+    align-items: flex-start;
+  }
+
+  .toolbar h3 {
+    font-size: 1.5em;
+    text-align: left;
+    margin: 0;
+  }
+
+  .fecha {
+    font-size: 1.15em;
+  }
+
+  .btn-actualizar {
+    background: #08c22a;
+    color: rgb(255, 255, 255);
+    font-size: 1.01em;
+    font-weight: 600;
+    border: none;
+    padding: 11px 29px;
+    border-radius: 6px;
+    width: 100%; 
+  }
+}
+
+
+
 </style>

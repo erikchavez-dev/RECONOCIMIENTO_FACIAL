@@ -20,7 +20,6 @@
           <select v-model="accionFiltro" @change="cargarAuditoria(1)" class="sel-accion">
             <option value="">Todas</option>
             <option value="LOGIN">Login</option>
-            <option value="LOGOUT">Logout</option>
             <option value="MARCACION">Marcación</option>
             <option value="VERIFICACION">Verificación facial</option>
             <option value="CREAR">Crear</option>
@@ -171,15 +170,18 @@ function limpiarFiltros() {
 const paginasVisibles = computed(() => {
   const total = totalPaginas.value
   const actual = paginaActual.value
-  const rango = 2
-  let inicio = Math.max(1, actual - rango)
-  let fin    = Math.min(total, actual + rango)
-  if (fin - inicio < 4) {
-    if (inicio === 1) fin = Math.min(total, 5)
-    else inicio = Math.max(1, fin - 4)
+
+  let inicio = actual
+  let fin = actual + 2
+
+  if (fin > total) {
+    fin = total
+    inicio = Math.max(1, total - 2)
   }
   const paginas = []
-  for (let i = inicio; i <= fin; i++) paginas.push(i)
+  for (let i = inicio; i <= fin; i++) {
+    paginas.push(i)
+  }
   return paginas
 })
 
@@ -193,7 +195,6 @@ function formatearFecha(fecha) {
 function getBadgeClass(accion) {
   if (accion.includes('LOGIN_EXITOSO') || accion.includes('CREAR') || accion.includes('REGISTRAR')) return 'badge-verde'
   if (accion.includes('LOGIN_FALLIDO') || accion.includes('ELIMINAR') || accion.includes('FALLIDO')) return 'badge-rojo'
-  if (accion.includes('LOGOUT'))       return 'badge-gris'
   if (accion.includes('MARCACION'))    return 'badge-azul'
   if (accion.includes('VERIFICACION')) return 'badge-naranja'
   if (accion.includes('CAMBIO') || accion.includes('CONFIGURACION') || accion.includes('RESETEAR')) return 'badge-amarillo'
@@ -225,7 +226,7 @@ function getBadgeClass(accion) {
 .campo-buscar { flex: 1; min-width: 200px; }
 
 .campo label {
-  font-size: 0.75rem;
+  font-size: 1em;
   font-weight: 600;
   color: var(--text-accent, #1a3a6b);
 }
@@ -234,7 +235,7 @@ function getBadgeClass(accion) {
   padding: 8px 10px;
   border: 1px solid var(--border, #ddd);
   border-radius: 6px;
-  font-size: 0.85rem;
+  font-size: 0.9em;
   background: var(--bg-input, white);
   color: var(--text-primary, #111);
 }
@@ -248,27 +249,40 @@ function getBadgeClass(accion) {
 
 .btn-limpiar {
   padding: 8px 14px;
-  background: white;
+  background: #da3939;
   border: 1px solid var(--border, #ddd);
   border-radius: 6px;
   cursor: pointer;
   font-size: 0.82rem;
-  color: var(--text-secondary, #6b7280);
+  color: #fff;
   white-space: nowrap;
 }
-.btn-limpiar:hover { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
+
+.btn-limpiar:hover {
+  background: #ff0000;
+  color: #ffffff;
+  border-color: #fecaca;
+}
 
 .btn-actualizar {
-  padding: 8px 14px;
-  background: var(--accent, #1a3a6b);
-  color: white;
+  background: #08c22a;
+  color: rgb(255, 255, 255);
+  font-size: 1em;
+  font-weight: 600;
   border: none;
+  padding: 9px 15px;
   border-radius: 6px;
   cursor: pointer;
-  font-size: 0.82rem;
-  white-space: nowrap;
+
 }
-.btn-actualizar:hover { background: var(--accent-hover, #142d54); }
+
+.btn-actualizar:hover {
+  background: #4a7ac2;
+  color: #ffffff;
+}
+.btn-actualizar disabled {
+  opacity: 0.6;
+}
 
 /* INFO TOTAL */
 .info-total {
@@ -357,7 +371,6 @@ function getBadgeClass(accion) {
   animation: spin 0.7s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
-
 /* PAGINACIÓN */
 .paginacion {
   display: flex;
@@ -366,6 +379,16 @@ function getBadgeClass(accion) {
   gap: 8px;
   padding: 20px;
   flex-wrap: wrap;
+
+}
+.paginacion button {
+  background: #026d5f;
+  flex-shrink: 0;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
 }
 
 .btn-pagina {
@@ -379,28 +402,68 @@ function getBadgeClass(accion) {
   transition: all 0.15s;
   white-space: nowrap;
 }
-.btn-pagina:hover:not(:disabled) { background: var(--accent, #1a3a6b); color: white; border-color: var(--accent, #1a3a6b); }
-.btn-pagina:disabled { opacity: 0.4; cursor: not-allowed; }
-.btn-extremo { font-size: 0.75rem; padding: 7px 10px; }
 
-.paginas-numeros { display: flex; gap: 4px; }
-.btn-num {
-  width: 34px; height: 34px;
-  border: 1px solid var(--border, #e5e7eb);
-  border-radius: 6px;
-  background: var(--bg-panel, white);
-  color: var(--text-primary, #333);
-  cursor: pointer;
-  font-size: 0.82rem;
-  transition: all 0.15s;
+.btn-pagina:hover:not(:disabled) {
+  background: #01c5ab;
 }
-.btn-num:hover { background: var(--accent-light, #eff6ff); }
+
+.btn-pagina:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-extremo {
+  font-size: 0.75rem;
+  padding: 7px 10px;
+}
+
+.paginas-numeros {
+  display: flex;
+  gap: 4px;
+}
+
+
 .btn-num.activo {
-  background: var(--accent, #1a3a6b);
-  color: white;
-  border-color: var(--accent, #1a3a6b);
-  font-weight: 700;
+  background: #00f483;
+  font-weight: bold;
+}
+.btn-num:hover {
+  background: #01c5ab;
 }
 
-.pagina-info { font-weight: 600; color: var(--text-accent, #1a3a6b); }
+
+.pagina-info {
+  font-weight: 600;
+  color: var(--text-accent, #1a3a6b);
+}
+
+
+/* para el responsive */
+@media (max-width: 768px) {
+
+  .paginacion {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+
+    flex-wrap: nowrap;     /* 🔥 igual que trabajadores */
+    overflow-x: auto;      /* 🔥 scroll horizontal */
+    padding: 10px;
+  }
+
+  .paginas-numeros {
+    display: flex;
+    gap: 6px;
+  }
+
+  .paginacion button {
+    flex-shrink: 0;    
+    padding: 5px 8px;
+    font-size: 0.8rem;
+  }
+
+
+}
+
 </style>

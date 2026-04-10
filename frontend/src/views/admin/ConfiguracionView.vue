@@ -476,4 +476,120 @@ async function guardar() {
   background: #fef9c3;
   color: #ca8a04;
 }
+
+/* para el responsive*/
+
+@media (max-width: 768px) {
+
+  .config-container {
+    gap: 16px;
+  }
+
+  .seccion {
+    padding: 16px;
+    border-radius: 10px;
+  }
+
+  .seccion h3 {
+    font-size: 0.95rem;
+    margin-bottom: 12px;
+  }
+
+  /* GRID → UNA SOLA COLUMNA */
+  .form-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .campo label {
+    font-size: 0.78rem;
+  }
+
+  .campo input {
+    font-size: 0.85rem;
+    padding: 7px 9px;
+  }
+
+  /* TIME PICKER AJUSTADO */
+  .time-picker {
+    gap: 3px;
+    flex-wrap: nowrap;
+  }
+
+  .sel-hora,
+  .sel-min,
+  .sel-ampm {
+    font-size: 0.8rem;
+    padding: 6px 4px;
+  }
+
+  .sel-hora,
+  .sel-min {
+    width: 48px;
+  }
+
+  .sel-ampm {
+    width: 55px;
+  }
+
+  .sep {
+    font-size: 0.9rem;
+  }
+
+  .hint-hora {
+    font-size: 0.68rem;
+  }
+
+  .hint {
+    font-size: 0.7rem;
+  }
+
+  /* TOGGLE */
+  .campo-toggle {
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .toggle {
+    width: 44px;
+    height: 24px;
+  }
+
+  .toggle-circulo {
+    width: 18px;
+    height: 18px;
+    top: 3px;
+  }
+
+  .toggle.activo .toggle-circulo {
+    left: 23px;
+  }
+
+  /* MENSAJES */
+  .exito,
+  .error {
+    font-size: 0.8rem;
+    padding: 10px;
+  }
+
+  /* BOTÓN */
+  .btn-guardar {
+    width: 100%;
+    text-align: center;
+    padding: 12px;
+    font-size: 0.9rem;
+  }
+
+  /* HORARIO INFO */
+  .horario-info {
+    font-size: 0.75rem;
+  }
+
+  .horario-tag {
+    font-size: 0.7rem;
+    padding: 2px 6px;
+  }
+
+}
+
 </style>

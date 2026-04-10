@@ -13,7 +13,7 @@ from reportlab.lib.units import cm
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from zoneinfo import ZoneInfo
-from datetime import datetime, timedelta
+from datetime import datetime, date, timedelta
 from django.utils import timezone
 from apps.trabajadores.models import Trabajador
 from apps.usuarios.permissions import EsAdmin
@@ -27,6 +27,11 @@ class MarcacionRegistrarView(APIView):
     def post(self, request):
         trabajador_id = request.data.get('trabajador_id')
         dispositivo = request.data.get('dispositivo', 'No especificado')
+        latitud = request.data.get('latitud')
+        longitud = request.data.get('longitud')
+        ciudad = request.data.get('ciudad')
+        pais = request.data.get('pais')
+        ip_info = request.data.get('ip_info')
 
         if not trabajador_id:
             return Response(
@@ -50,7 +55,7 @@ class MarcacionRegistrarView(APIView):
 
         ip = request.META.get('REMOTE_ADDR', '0.0.0.0')
 
-        marcacion, error = registrar_marcacion(trabajador, ip, dispositivo)
+        marcacion, error = registrar_marcacion(trabajador, ip, dispositivo, latitud, longitud, ciudad, pais, ip_info)
         if error:
             return Response(
                 {'error': error},
@@ -496,7 +501,7 @@ def calcular_tiempo_trabajado(entrada_dt, salida_dt):
     return f'{horas:02d}:{minutos:02d}:{segundos:02d}'
 
 
-def agrupar_marcaciones_por_dia(marcaciones_qs):
+def agrupar_marcaciones_por_dia(marcaciones_qs, fecha_inicio_date=None, fecha_fin_date=None, hoy=None):
     """
     Agrupa marcaciones por día y calcula:
     - entrada, salida, estado, tiempo trabajado
@@ -543,10 +548,26 @@ def agrupar_marcaciones_por_dia(marcaciones_qs):
                 dia['resultado'] = 'TARDANZA'
             else:
                 dia['resultado'] = 'ASISTIÓ'
-        elif dia['entrada'] and not dia['salida']:
-            dia['resultado'] = 'SIN SALIDA'
         else:
             dia['resultado'] = 'FALTA'
+
+    # NUEVO: inyectar días laborables sin marcación 
+    if fecha_inicio_date and fecha_fin_date:
+        dia_actual = fecha_inicio_date
+        while dia_actual <= fecha_fin_date:
+            iso = dia_actual.isoformat()
+            if dia_actual.weekday() < 5 and iso not in dias:
+                if hoy is None or dia_actual <= hoy:
+                    dias[iso] = {
+                        'fecha': iso,
+                        'dia_semana': DIAS_SEMANA[dia_actual.weekday()],
+                        'dia_texto': f"{DIAS_SEMANA[dia_actual.weekday()]} {dia_actual.day} de {MESES_ES[dia_actual.month]}",
+                        'entrada': None, 'entrada_hora': None, 'entrada_estado': None,
+                        'salida': None, 'salida_hora': None,
+                        'tiempo_trabajado': None,
+                        'resultado': 'FALTA',
+                    }
+            dia_actual += timedelta(days=1)
 
     # Ordenar por fecha descendente
     return sorted(dias.values(), key=lambda x: x['fecha'], reverse=True)
@@ -657,13 +678,40 @@ class AsistenciaAdminView(APIView):
             exitoso=True
         ).order_by('fecha')
 
-        dias = agrupar_marcaciones_por_dia(marcaciones)
+        dias = agrupar_marcaciones_por_dia(
+            marcaciones,
+            fecha_inicio_date=inicio.date(),
+            fecha_fin_date=fin.date(),
+            hoy=ahora_local.date()
+        )
+
+        dias_con_marcacion = {d['fecha'] for d in dias}
+        dia_actual = inicio.date()
+        fin_date   = fin.date()
+
+        while dia_actual <= fin_date:
+            if dia_actual.weekday() < 5 and dia_actual.isoformat() not in dias_con_marcacion:
+                if dia_actual <= ahora_local.date():
+                    dias.append({
+                        'fecha':            dia_actual.isoformat(),
+                        'dia_semana':       DIAS_SEMANA[dia_actual.weekday()],
+                        'dia_texto':        f"{DIAS_SEMANA[dia_actual.weekday()]} {dia_actual.day} de {MESES_ES[dia_actual.month]}",
+                        'entrada':          None,
+                        'entrada_hora':     None,
+                        'entrada_estado':   None,
+                        'salida':           None,
+                        'salida_hora':      None,
+                        'tiempo_trabajado': None,
+                        'resultado':        'FALTA',
+                    })
+            dia_actual += timedelta(days=1)
+        dias = sorted(dias, key=lambda x: x['fecha'], reverse=True)
 
         total_dias  = len(dias)
         asistencias = sum(1 for d in dias if d['resultado'] in ('ASISTIÓ', 'TARDANZA'))
         tardanzas   = sum(1 for d in dias if d['resultado'] == 'TARDANZA')
         faltas      = sum(1 for d in dias if d['resultado'] == 'FALTA')
-
+ 
         return Response({
             'trabajador': {
                 'id': trabajador.id,
@@ -683,3 +731,95 @@ class AsistenciaAdminView(APIView):
             },
             'dias': dias
         }, status=status.HTTP_200_OK)
+
+class EditarMarcacionAdminView(APIView):
+    permission_classes = [EsAdmin]
+
+    def patch(self, request):
+        trabajador_id = request.data.get('trabajador_id')
+        fecha_str     = request.data.get('fecha')
+        entrada_hora  = request.data.get('entrada_hora')
+        salida_hora   = request.data.get('salida_hora')
+
+        if not all([trabajador_id, fecha_str, entrada_hora]):
+            return Response({'error': 'Faltan datos'}, status=400)
+
+        try:
+            trabajador = Trabajador.objects.get(pk=trabajador_id)
+            fecha = date.fromisoformat(fecha_str)
+        except (Trabajador.DoesNotExist, ValueError):
+            return Response({'error': 'Datos inválidos'}, status=400)
+
+        lima_tz = ZoneInfo('America/Lima')
+
+        # Rango completo del día en Lima para filtrar correctamente
+        inicio_dia = datetime(fecha.year, fecha.month, fecha.day, 0, 0, 0, tzinfo=lima_tz)
+        fin_dia    = datetime(fecha.year, fecha.month, fecha.day, 23, 59, 59, tzinfo=lima_tz)
+
+        def construir_datetime(hora_str):
+            from datetime import time as dtime
+            h, m = map(int, hora_str.split(':'))
+            return datetime.combine(fecha, dtime(h, m)).replace(tzinfo=lima_tz)
+
+        # ── ENTRADA ───────────────────────────────────────────────
+        entradas = list(Marcacion.objects.filter(
+            trabajador=trabajador,
+            fecha__gte=inicio_dia,
+            fecha__lte=fin_dia,
+            tipo='ENTRADA'
+        ).order_by('fecha'))
+
+        nueva_entrada_dt = construir_datetime(entrada_hora)
+
+        if entradas:
+            # Actualizar la primera y borrar duplicados
+            primera = entradas[0]
+            primera.fecha = nueva_entrada_dt
+            primera.save(update_fields=['fecha'])
+            if len(entradas) > 1:
+                Marcacion.objects.filter(
+                    id__in=[e.id for e in entradas[1:]]
+                ).delete()
+        else:
+            Marcacion.objects.create(
+                trabajador=trabajador,
+                fecha=nueva_entrada_dt,
+                tipo='ENTRADA',
+                estado='PUNTUAL',
+                exitoso=True
+            )
+
+        # ── SALIDA ────────────────────────────────────────────────
+        salidas = list(Marcacion.objects.filter(
+            trabajador=trabajador,
+            fecha__gte=inicio_dia,
+            fecha__lte=fin_dia,
+            tipo='SALIDA'
+        ).order_by('fecha'))
+
+        if salida_hora:
+            nueva_salida_dt = construir_datetime(salida_hora)
+            if salidas:
+                primera_salida = salidas[0]
+                primera_salida.fecha = nueva_salida_dt
+                primera_salida.save(update_fields=['fecha'])
+                if len(salidas) > 1:
+                    Marcacion.objects.filter(
+                        id__in=[s.id for s in salidas[1:]]
+                    ).delete()
+            else:
+                Marcacion.objects.create(
+                    trabajador=trabajador,
+                    fecha=nueva_salida_dt,
+                    tipo='SALIDA',
+                    exitoso=True
+                )
+        else:
+            Marcacion.objects.filter(
+                trabajador=trabajador,
+                fecha__gte=inicio_dia,
+                fecha__lte=fin_dia,
+                tipo='SALIDA'
+            ).delete()
+
+        return Response({'ok': True})

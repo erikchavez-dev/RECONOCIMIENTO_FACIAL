@@ -6,7 +6,7 @@
   <div class="cambiar-page">
     <div class="cambiar-card">
 
-      <img src="/logo-2.webp" alt="Logo Municipalidad" class="logo" />
+      <img :src="IconoLogo" alt="Logo Municipalidad" class="logo" />
       <h2>Cambiar Contraseña</h2>
       <p class="subtitulo">Debe cambiar su contraseña antes de continuar</p>
 
@@ -52,10 +52,12 @@
 </template>
 
 <script setup>
+import IconoLogo from '/logo-3.webp' 
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import api from '@/services/api'
+
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -117,7 +119,7 @@ async function handleCambiar() {
 <style scoped>
 .cambiar-page {
   min-height: 100vh;
-  background-color: #1a3a6b;
+  background-color: #122541;
   display: flex;
   align-items: center;
   justify-content: center;

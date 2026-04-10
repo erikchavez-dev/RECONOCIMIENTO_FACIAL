@@ -26,6 +26,7 @@ SECRET_KEY = 'django-insecure-^gey1p+jdbp3zzlq@ed4)80hcsblr&-b_gh3_hdjz@6^9eoy$u
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
+#para mis pruebas necesito esto '*' dentro de allowed_host   
 ALLOWED_HOSTS = []
 
 
@@ -155,6 +156,13 @@ CORS_ALLOWED_ORIGINS = [
     'http://10.38.154.121:5173',
     'http://127.0.0.1:5173',
 ]
+#para pruebas en mi red local
+#CORS_ALLOW_ALL_ORIGINS = True
+
+
+
+
+
 
 # Internationalization
 # https://docs.djangoproject.com/en/4.2/topics/i18n/

@@ -9,6 +9,7 @@ from .views import (
     EstadisticasDashboardView,
     AsistenciaResumenView,
     AsistenciaAdminView,
+    EditarMarcacionAdminView,
 )
 
 urlpatterns = [
@@ -21,4 +22,5 @@ urlpatterns = [
     path('estadisticas/', EstadisticasDashboardView.as_view(), name='marcacion-estadisticas'),
     path('asistencia/', AsistenciaResumenView.as_view(), name='asistencia-resumen'),
     path('asistencia/admin/', AsistenciaAdminView.as_view(), name='asistencia-admin'),
+    path('editar-admin/', EditarMarcacionAdminView.as_view()),
 ]

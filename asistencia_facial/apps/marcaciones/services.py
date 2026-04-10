@@ -54,7 +54,8 @@ def registrar_marcacion(
     # ── LÓGICA DE RANGOS (Opción 1) ─────────────────────────────────────
     en_rango_entrada = config.hora_inicio_entrada <= hora_act <= config.hora_fin_entrada
     # Rango de salida: desde hora_inicio_salida hasta fin del día
-    en_rango_salida  = hora_act >= config.hora_inicio_salida
+    #en_rango_salida  = hora_act >= config.hora_inicio_salida
+    en_rango_salida = config.hora_inicio_salida <= hora_act <= config.hora_fin_salida
 
     # Rango de tardanza: después de hora_fin_entrada pero antes de rango salida
     es_tardanza = hora_act > config.hora_fin_entrada and not en_rango_salida
@@ -84,6 +85,7 @@ def registrar_marcacion(
     # ── GUARDAR MARCACIÓN ────────────────────────────────────────────────
     marcacion = Marcacion.objects.create(
         trabajador  = trabajador,
+        fecha       = ahora_lim,
         tipo        = tipo,
         estado      = estado,
         ip          = ip,

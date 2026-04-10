@@ -10,7 +10,8 @@ from apps.trabajadores.models import Trabajador
 from apps.auditoria.services import registrar_auditoria
 from django.contrib.auth.hashers import make_password
 from apps.usuarios.permissions import EsAdmin
-
+from math import ceil
+from django.db.models import Q
 
 def get_tokens_for_user(usuario):
     refresh = RefreshToken()
@@ -225,9 +226,27 @@ class ListarUsuariosView(APIView):
     permission_classes = [EsAdmin]
 
     def get(self, request):
+        buscar = request.GET.get('buscar', '')
+        pagina = int(request.GET.get('pagina', 1))
+        limite = int(request.GET.get('limite', 6))
+
         usuarios = Usuario.objects.select_related(
             'trabajador', 'rol'
         ).all().order_by('trabajador__apellido_paterno')
+
+        if buscar:
+            usuarios = usuarios.filter(
+                Q(trabajador__dni__icontains=buscar) |
+                Q(trabajador__nombres__icontains=buscar) |
+                Q(trabajador__apellido_paterno__icontains=buscar)
+            )
+
+        total = usuarios.count()
+
+        inicio = (pagina - 1) * limite
+        fin = inicio + limite
+
+        usuarios = usuarios.order_by('trabajador__apellido_paterno')[inicio:fin]
 
         data = []
         for u in usuarios:
@@ -246,7 +265,9 @@ class ListarUsuariosView(APIView):
             })
 
         return Response({
-            'total': len(data),
+            'total': total,
+            'pagina': pagina,
+            'total_paginas': ceil(total / limite),
             'usuarios': data
         }, status=status.HTTP_200_OK)
     

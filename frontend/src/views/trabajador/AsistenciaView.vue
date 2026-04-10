@@ -1,23 +1,25 @@
 <template>
-  <div class="asistencia">
+  <div class="panel" :class="{ light: !theme.oscuro }">
 
     <!-- HEADER -->
-    <header class="header">
+    <header class="header-bar">
       <div class="header-left">
         <img src="/sgd_logo.webp" alt="Logo" class="logo" />
         <span class="sistema-nombre">Sistema de Control de Asistencia</span>
       </div>
       <div class="header-right">
-        <span class="nombre-usuario">
+        <span class="nombre-chip">
           <img :src="iconoPerfil" class="icono-perfil" />
           {{ auth.usuario?.nombre_completo }}
         </span>
-        <button @click="theme.toggle()" class="btn-tema" :title="theme.oscuro ? 'Tema claro' : 'Tema oscuro'">{{ theme.oscuro ? '☀️' : '🌙' }}</button>
+        <button @click="theme.toggle()" class="btn-sm" :title="theme.oscuro ? 'Tema claro' : 'Tema oscuro'">
+          <img :src="theme.oscuro ? iconoSol : iconoLuna" alt="Icono Tema" class="icono-btn" />
+        </button>
         <button @click="handleLogout" class="btn-logout">⬅ Salir</button>
       </div>
     </header>
 
-    <main class="main">
+    <main class="content">
       <div class="titulo-seccion">
         <button @click="$router.push('/trabajador/panel')" class="btn-volver">← Volver</button>
         <h2>Mi Asistencia</h2>
@@ -43,18 +45,22 @@
       <!-- RESUMEN -->
       <div v-if="datos" class="resumen-grid">
         <div class="resumen-card verde">
+          <div class="res-icon"></div>
           <span class="res-valor">{{ datos.resumen.asistencias }}</span>
           <span class="res-label">Asistencias</span>
         </div>
         <div class="resumen-card amarillo">
+          <div class="res-icon"></div>
           <span class="res-valor">{{ datos.resumen.tardanzas }}</span>
           <span class="res-label">Tardanzas</span>
         </div>
         <div class="resumen-card rojo">
+          <div class="res-icon"></div>
           <span class="res-valor">{{ datos.resumen.faltas }}</span>
           <span class="res-label">Faltas</span>
         </div>
         <div class="resumen-card azul">
+          <div class="res-icon"></div>
           <span class="res-valor">{{ datos.resumen.total_dias }}</span>
           <span class="res-label">Días registrados</span>
         </div>
@@ -78,13 +84,10 @@
           </thead>
           <tbody>
             <tr v-for="dia in datos.dias" :key="dia.fecha">
-              <!-- FECHA -->
               <td class="celda-fecha">
                 <span class="dia-semana">{{ dia.dia_semana }}</span>
-                <span class="dia-fecha">{{ formatearFechaCorta(dia.fecha) }}</span>
+                <span class="dia-fecha-txt">{{ formatearFechaCorta(dia.fecha) }}</span>
               </td>
-
-              <!-- ENTRADA -->
               <td>
                 <div v-if="dia.entrada_hora" class="celda-marcacion">
                   <span :class="['chip', dia.entrada_estado === 'PUNTUAL' ? 'chip-p' : 'chip-t']">
@@ -94,8 +97,6 @@
                 </div>
                 <span v-else class="sin-dato">—</span>
               </td>
-
-              <!-- SALIDA -->
               <td>
                 <div v-if="dia.salida_hora" class="celda-marcacion">
                   <span class="chip chip-s">S</span>
@@ -103,16 +104,12 @@
                 </div>
                 <span v-else class="sin-dato">—</span>
               </td>
-
-              <!-- TIEMPO TRABAJADO -->
               <td>
                 <span v-if="dia.tiempo_trabajado" class="tiempo-trabajado">
                   {{ dia.tiempo_trabajado }}
                 </span>
                 <span v-else class="sin-dato">—</span>
               </td>
-
-              <!-- RESULTADO -->
               <td>
                 <span :class="['resultado-chip', claseResultado(dia.resultado)]">
                   {{ dia.resultado }}
@@ -131,6 +128,9 @@
 
 <script setup>
 import iconoPerfil from '@/assets/icon-perfil.svg'
+import iconoLuna from '@/assets/icon-luna.svg'
+import iconoSol from '@/assets/icon-sol.svg'
+
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
@@ -138,17 +138,16 @@ import { useThemeStore } from '@/stores/theme'
 import api from '@/services/api'
 
 const router = useRouter()
-const auth = useAuthStore()
-const theme = useThemeStore()
+const auth   = useAuthStore()
+const theme  = useThemeStore()
 
-const datos = ref(null)
+const datos    = ref(null)
 const cargando = ref(false)
 
-// Fechas por defecto: mes actual
-const hoy = new Date()
+const hoy       = new Date()
 const primerDia = new Date(hoy.getFullYear(), hoy.getMonth(), 1)
 const fechaInicio = ref(primerDia.toISOString().split('T')[0])
-const fechaFin = ref(hoy.toISOString().split('T')[0])
+const fechaFin    = ref(hoy.toISOString().split('T')[0])
 
 onMounted(() => cargar())
 
@@ -172,8 +171,8 @@ function formatearFechaCorta(fechaStr) {
 }
 
 function claseResultado(resultado) {
-  if (resultado === 'ASISTIÓ') return 'res-asistio'
-  if (resultado === 'TARDANZA') return 'res-tardanza'
+  if (resultado === 'ASISTIÓ')    return 'res-asistio'
+  if (resultado === 'TARDANZA')   return 'res-tardanza'
   if (resultado === 'SIN SALIDA') return 'res-sin-salida'
   return 'res-falta'
 }
@@ -185,142 +184,395 @@ async function handleLogout() {
 </script>
 
 <style scoped>
-.asistencia {
+/* ── TEMA OSCURO (defecto) ── */
+.panel {
+  --bg-main: #141416cc;
+  --bg-card: #141416;
+  --bg-soft: rgba(255,255,255,0.08);
+  --text-main: #fcfcfd;
+  --text-soft: rgba(255,255,255,0.6);
+  --border-color: #232327;
+  --accent: #18c440;
+
   min-height: 100vh;
-  background: #f0f4f8;
   display: flex;
   flex-direction: column;
+  background-color: var(--bg-main);
+  color: var(--text-main);
 }
 
-/* HEADER */
-.header {
-  background: #1a3a6b;
-  padding: 12px 24px;
+/* ── TEMA CLARO ── */
+.panel.light {
+  --bg-main: #f8fafc;
+  --bg-card: #ffffff;
+  --bg-soft: #f1f5f9;
+  --text-main: #0f172a;
+  --text-soft: #64748b;
+  --border-color: #e2e8f0;
+  --accent: #2563eb;
+}
+
+/* ── HEADER ── */
+.header-bar {
+  position: relative;
+  z-index: 10;
   display: flex;
-  align-items: center;
   justify-content: space-between;
+  align-items: center;
+  padding: 12px 28px;
+  border-bottom: 2px solid var(--accent);
+  background: var(--bg-card);
 }
 .header-left { display: flex; align-items: center; gap: 10px; }
-.header-right { display: flex; align-items: center; gap: 16px; }
-.logo { width: 180px; height: 60px; object-fit: contain; }
-.sistema-nombre { color: white; font-weight: bold; font-size: 1.1em; }
-.nombre-usuario { color: white; font-size: 0.9rem; display: flex; align-items: center; gap: 6px; }
-.icono-perfil { width: 20px; height: 20px; }
+.header-right { display: flex; align-items: center; gap: 10px; }
+
+.logo { width: 150px; height: 50px; object-fit: contain; }
+
+.sistema-nombre {
+  color: var(--text-main);
+  font-weight: 600;
+  font-size: 0.95rem;
+  opacity: 0.9;
+}
+
+.nombre-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-main);
+  font-size: 0.82rem;
+  background: var(--bg-soft);
+  padding: 9px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+}
+.icono-perfil { width: 18px; height: 18px; }
+
+.btn-sm {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 25px;
+  cursor: pointer;
+  background: var(--bg-soft);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+.btn-sm:hover { background: var(--accent); }
+.icono-btn { width: 18px; height: 18px; display: block; }
+
 .btn-logout {
-  background: transparent; border: 1px solid white; color: white;
-  padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 0.85rem;
+  background: red;
+  border: 1px solid rgba(255,255,255,0.35);
+  color: #ffffff;
+  padding: 9px 42px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.82rem;
 }
-.btn-logout:hover { background: white; color: #1a3a6b; }
+.btn-logout:hover { background: #000000; color: #ff0000; }
 
-/* MAIN */
-.main {
+/* tema claro overrides header */
+.panel.light .header-bar {
+  background: white;
+  border-bottom: 1px solid var(--border-color);
+}
+.panel.light .btn-sm {
+  background: var(--bg-soft);
+  border-color: var(--border-color);
+}
+.panel.light .btn-sm:hover { background: var(--accent); }
+
+/* ── CONTENT ── */
+.content {
+  position: relative;
+  z-index: 10;
   flex: 1;
-  padding: 24px;
-  max-width: 900px;
-  margin: 0 auto;
-  width: 100%;
+  padding: 28px 32px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  background-color: var(--bg-main);
 }
 
+/* ── TÍTULO ── */
 .titulo-seccion {
-  display: flex; align-items: center; gap: 16px; margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
 }
 .btn-volver {
-  background: none; border: none; color: #1a3a6b;
-  font-size: 1rem; cursor: pointer; font-weight: 600;
+  background: var(--bg-soft);
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
-h2 { font-size: 1.3rem; color: #1a3a6b; }
+.btn-volver:hover { border-color: var(--accent); color: var(--accent); }
 
-/* FILTROS */
+h2 {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--text-main);
+  margin: 0;
+}
+
+/* ── FILTROS ── */
 .filtros-card {
-  background: white; border-radius: 10px; padding: 16px 20px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.07); margin-bottom: 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 16px 20px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
 }
-.filtros { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
-.campo { display: flex; flex-direction: column; gap: 4px; }
-.campo label { font-size: 0.78rem; font-weight: 600; color: #1a3a6b; }
-.campo input {
-  padding: 8px 10px; border: 1px solid #ddd; border-radius: 6px;
-  font-size: 0.88rem;
+.panel.light .filtros-card {
+  box-shadow: 0 1px 4px rgba(0,0,0,0.07);
 }
-.campo input:focus { outline: none; border-color: #1a3a6b; }
-.btn-buscar {
-  padding: 8px 20px; background: #1a3a6b; color: white;
-  border: none; border-radius: 6px; cursor: pointer; font-size: 0.88rem;
-}
-.btn-buscar:disabled { opacity: 0.6; cursor: not-allowed; }
 
-/* RESUMEN */
-.resumen-grid {
-  display: grid; grid-template-columns: repeat(4, 1fr);
-  gap: 12px; margin-bottom: 20px;
+.filtros {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
 }
-@media (max-width: 600px) { .resumen-grid { grid-template-columns: repeat(2, 1fr); } }
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.campo label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.campo input {
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 0.88rem;
+  background: var(--bg-soft);
+  color: var(--text-main);
+  transition: border-color 0.2s;
+}
+.campo input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.btn-buscar {
+  padding: 9px 24px;
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.88rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+.btn-buscar:hover:not(:disabled) {
+  opacity: 0.88;
+  transform: translateY(-1px);
+}
+.btn-buscar:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── RESUMEN ── */
+.resumen-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
 
 .resumen-card {
-  border-radius: 10px; padding: 16px; text-align: center;
-  display: flex; flex-direction: column; gap: 4px;
-  border-left: 4px solid transparent;
+  border-radius: 14px;
+  padding: 18px 16px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border-color);
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: default;
 }
-.resumen-card.verde   { background: #f0fdf4; border-left-color: #22c55e; }
-.resumen-card.amarillo{ background: #fefce8; border-left-color: #f59e0b; }
-.resumen-card.rojo    { background: #fef2f2; border-left-color: #ef4444; }
-.resumen-card.azul    { background: #eff6ff; border-left-color: #3b82f6; }
+.resumen-card::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 4px;
+  border-radius: 14px 0 0 14px;
+}
+.resumen-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+}
 
-.res-valor { font-size: 1.8rem; font-weight: 800; color: #111827; }
-.res-label { font-size: 0.75rem; color: #6b7280; font-weight: 500; }
+/* oscuro */
+.resumen-card.verde   { background: rgba(24,196,64,0.08);  }
+.resumen-card.verde::before   { background: #18c440; }
+.resumen-card.amarillo { background: rgba(251,191,36,0.08); }
+.resumen-card.amarillo::before { background: #f59e0b; }
+.resumen-card.rojo    { background: rgba(239,68,68,0.08);  }
+.resumen-card.rojo::before    { background: #ef4444; }
+.resumen-card.azul    { background: rgba(59,130,246,0.08); }
+.resumen-card.azul::before    { background: #3b82f6; }
 
-/* TABLA */
+/* claro */
+.panel.light .resumen-card.verde   { background: #f0fdf4; }
+.panel.light .resumen-card.amarillo { background: #fefce8; }
+.panel.light .resumen-card.rojo    { background: #fef2f2; }
+.panel.light .resumen-card.azul    { background: #eff6ff; }
+
+.res-icon {
+  font-size: 1.5rem;
+  line-height: 1;
+  margin-bottom: 2px;
+}
+.res-valor {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--text-main);
+  line-height: 1;
+}
+.res-label {
+  font-size: 0.73rem;
+  color: var(--text-soft);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* ── TABLA ── */
 .tabla-card {
-  background: white; border-radius: 10px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.07); overflow: auto;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  overflow: auto;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
 }
-.tabla { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+.panel.light .tabla-card {
+  box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+}
+
+.tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
 .tabla th {
-  background: #1a3a6b; color: white;
-  padding: 12px 16px; text-align: left; font-weight: 600;
+  background: var(--accent);
+  color: white;
+  padding: 12px 16px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
+.panel.light .tabla th { background: #1a3a6b; }
+
 .tabla td {
-  padding: 12px 16px; border-bottom: 1px solid #f0f4f8; color: #333;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-main);
 }
-.tabla tr:hover { background: #f8fafc; }
+.tabla tr:last-child td { border-bottom: none; }
+.tabla tbody tr:hover { background: var(--bg-soft); }
 
 /* CELDA FECHA */
 .celda-fecha { display: flex; flex-direction: column; gap: 2px; }
-.dia-semana { font-weight: 700; color: #1a3a6b; font-size: 0.82rem; }
-.dia-fecha  { font-size: 0.82rem; color: #6b7280; }
+.dia-semana {
+  font-weight: 700;
+  color: var(--accent);
+  font-size: 0.82rem;
+}
+.dia-fecha-txt { font-size: 0.82rem; color: var(--text-soft); }
 
-/* CELDA MARCACION */
+/* MARCACIÓN */
 .celda-marcacion { display: flex; align-items: center; gap: 8px; }
-
-/* CHIPS de P / T / S */
 .chip {
   width: 24px; height: 24px; border-radius: 6px;
   display: inline-flex; align-items: center; justify-content: center;
   font-weight: 800; font-size: 0.75rem; flex-shrink: 0;
 }
-.chip-p { background: #dcfce7; color: #16a34a; }  /* Puntual - verde */
-.chip-t { background: #fef9c3; color: #b45309; }  /* Tardanza - amarillo */
-.chip-s { background: #dbeafe; color: #1d4ed8; }  /* Salida - azul */
+.chip-p { background: rgba(22,163,74,0.2);  color: #22c55e; }
+.chip-t { background: rgba(251,191,36,0.2); color: #f59e0b; }
+.chip-s { background: rgba(59,130,246,0.2); color: #60a5fa; }
 
-.hora-texto { font-size: 0.82rem; color: #374151; font-weight: 500; }
+.panel.light .chip-p { background: #dcfce7; color: #16a34a; }
+.panel.light .chip-t { background: #fef9c3; color: #b45309; }
+.panel.light .chip-s { background: #dbeafe; color: #1d4ed8; }
 
-/* TIEMPO TRABAJADO */
+.hora-texto { font-size: 0.82rem; color: var(--text-main); font-weight: 500; }
+
 .tiempo-trabajado {
-  font-family: monospace; font-size: 0.88rem;
-  color: #1a3a6b; font-weight: 600;
+  font-family: monospace;
+  font-size: 0.88rem;
+  color: var(--accent);
+  font-weight: 600;
 }
 
 /* RESULTADO */
 .resultado-chip {
-  padding: 3px 10px; border-radius: 20px;
-  font-size: 0.75rem; font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.73rem;
+  font-weight: 700;
+  letter-spacing: 0.3px;
 }
-.res-asistio   { background: #dcfce7; color: #16a34a; }
-.res-tardanza  { background: #fef9c3; color: #b45309; }
-.res-sin-salida{ background: #dbeafe; color: #1d4ed8; }
-.res-falta     { background: #fee2e2; color: #dc2626; }
+.res-asistio    { background: rgba(22,163,74,0.15);  color: #22c55e; }
+.res-tardanza   { background: rgba(251,191,36,0.15); color: #f59e0b; }
+.res-sin-salida { background: rgba(59,130,246,0.15); color: #60a5fa; }
+.res-falta      { background: rgba(239,68,68,0.15);  color: #f87171; }
 
-.sin-dato { color: #d1d5db; font-size: 0.85rem; }
-.vacio    { text-align: center; padding: 40px; color: #9ca3af; }
-.cargando { text-align: center; padding: 40px; color: #9ca3af; }
+.panel.light .res-asistio    { background: #dcfce7; color: #16a34a; }
+.panel.light .res-tardanza   { background: #fef9c3; color: #b45309; }
+.panel.light .res-sin-salida { background: #dbeafe; color: #1d4ed8; }
+.panel.light .res-falta      { background: #fee2e2; color: #dc2626; }
+
+.sin-dato { color: var(--text-soft); font-size: 0.85rem; opacity: 0.5; }
+.vacio    { text-align: center; padding: 48px; color: var(--text-soft); font-size: 0.9rem; }
+.cargando { text-align: center; padding: 48px; color: var(--text-soft); font-size: 0.9rem; }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 768px) {
+  .header-bar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 16px;
+  }
+  .header-right { width: 100%; justify-content: space-between; }
+  .logo { width: 110px; height: auto; }
+  .sistema-nombre { font-size: 0.8rem; }
+  .nombre-chip { padding: 6px 10px; font-size: 0.75rem; }
+  .btn-logout { padding: 6px 12px; font-size: 0.75rem; }
+
+  .content { padding: 16px; gap: 14px; }
+
+  h2 { font-size: 1.1rem; }
+
+  .filtros { flex-direction: column; align-items: stretch; }
+  .campo input { width: 100%; box-sizing: border-box; }
+  .btn-buscar { width: 100%; padding: 12px; }
+
+  .resumen-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .res-valor { font-size: 1.6rem; }
+  .res-icon { font-size: 1.2rem; }
+
+  .tabla th, .tabla td { padding: 10px 10px; font-size: 0.78rem; }
+  .chip { width: 20px; height: 20px; font-size: 0.65rem; }
+  .hora-texto { font-size: 0.75rem; }
+  .resultado-chip { font-size: 0.65rem; padding: 3px 8px; }
+}
 </style>

@@ -62,9 +62,11 @@ def generar_embedding(imagen_base64):
     if imagen is None:
         return None, 'No se pudo decodificar la imagen'
 
-    faces = face_app.get(imagen)
-    if len(faces) == 0:
-        return None, 'No se detectó ningún rostro. Asegúrese de tener buena iluminación y mirar de frente'
+    try:
+        faces = face_app.get(imagen)
+    except Exception as e:
+        print("ERROR InsightFace:", e)
+        return None, 'Error procesando el rostro (modelo)'
 
     if len(faces) > 1:
         return None, 'Se detectó más de un rostro, por favor capture solo un rostro'
@@ -73,10 +75,12 @@ def generar_embedding(imagen_base64):
     face = faces[0]
     det_score = face.det_score  # Score de confianza de detección (0 a 1)
 
-    if det_score < 0.7:
+    if det_score < 0.6:
         return None, f'Rostro detectado con baja calidad ({det_score:.2f}). Mejore la iluminación'
 
-    embedding = face.embedding.tolist()
+    embedding = face.embedding
+    embedding = embedding / np.linalg.norm(embedding)
+    embedding = embedding.tolist()
     return embedding, None
 
 
@@ -117,7 +121,13 @@ def comparar_embeddings(embedding1, embedding2, umbral):
     e1 = np.array(embedding1)
     e2 = np.array(embedding2)
 
-    similitud = np.dot(e1, e2) / (np.linalg.norm(e1) * np.linalg.norm(e2))
+    norm1 = np.linalg.norm(e1)
+    norm2 = np.linalg.norm(e2)
+
+    if norm1 == 0 or norm2 == 0:
+        return False, 0.0
+
+    similitud = np.dot(e1, e2) / (norm1 * norm2)
 
     if similitud >= umbral:
         return True, float(similitud)

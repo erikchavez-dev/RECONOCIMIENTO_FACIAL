@@ -6,6 +6,13 @@
 
     <div class="toolbar">
       <h3>Gestión de Usuarios</h3>
+      <div class="buscador">
+        <div class="buscador-input">
+          <img :src="iconoLupa" class="icono-buscar" alt="Buscar" />
+          <input v-model="buscar" @input="buscarUsuarios" type="text"
+          placeholder="Buscar por DNI, nombre o apellido..." class="input-buscar" />
+        </div>
+      </div>
       <button @click="cargarUsuarios" class="btn-actualizar">Actualizar</button>
     </div>
 
@@ -27,7 +34,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-if="usuarios.length === 0">
+          <tr v-if="!usuarios || usuarios.length === 0">
             <td colspan="9" class="vacio">No hay usuarios registrados</td>
           </tr>
           <tr v-for="u in usuarios" :key="u.id">
@@ -82,7 +89,26 @@
         </tbody>
       </table>
     </div>
-
+   <div class="paginacion" v-if="totalPaginas > 1">
+      <button @click="cargarUsuarios(1)" :disabled="paginaActual === 1" class="btn-pagina">
+        «
+      </button>
+      <button @click="cargarUsuarios(paginaActual - 1)" :disabled="paginaActual === 1" class="btn-pagina">
+        Anterior
+      </button>
+      <div class="paginas-numeros">
+        <button v-for="p in paginasVisibles" :key="p" @click="cargarUsuarios(p)"
+          :class="['btn-num', p === paginaActual ? 'activo' : '']">
+          {{ p }}
+        </button>
+      </div>
+      <button @click="cargarUsuarios(paginaActual + 1)" :disabled="paginaActual === totalPaginas" class="btn-pagina">
+        Siguiente
+      </button>
+      <button @click="cargarUsuarios(totalPaginas)" :disabled="paginaActual === totalPaginas" class="btn-pagina">
+        »
+      </button>
+    </div>
     <!-- MENSAJE -->
     <div v-if="mensaje" :class="['mensaje', mensajeExito ? 'exito' : 'error']">
       {{ mensaje }}
@@ -95,8 +121,9 @@
 import iconoCandado from '@/assets/icon-candado.svg'
 import iconoCandadoCerrado from '@/assets/icon-candado-cerrado.svg'
 import iconoFacial from '@/assets/icon-facial.svg'
+import iconoLupa from '@/assets/lupa-buscador.svg'
 
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import AdminLayout from '@/components/AdminLayout.vue'
 import api from '@/services/api'
 
@@ -104,22 +131,66 @@ const usuarios = ref([])
 const cargando = ref(true)
 const mensaje = ref('')
 const mensajeExito = ref(true)
+const paginaActual = ref(1)
+const totalPaginas = ref(1)
+const total = ref(0)
+
+const buscar = ref('')
+let timeoutBuscar = null
 
 onMounted(async () => {
   await cargarUsuarios()
 })
 
-async function cargarUsuarios() {
+async function cargarUsuarios(pagina = 1) {
   cargando.value = true
+  paginaActual.value = pagina
+
   try {
-    const response = await api.get('/api/auth/listar/')
-    usuarios.value = response.data.usuarios
+    const params = { pagina }
+
+    if (buscar.value) {
+      params.buscar = buscar.value
+    }
+
+    const response = await api.get('/api/auth/listar/', { params })
+
+    usuarios.value = response.data.usuarios || []
+    total.value = response.data.total
+    totalPaginas.value = response.data.total_paginas
+    paginaActual.value = response.data.pagina
+
   } catch (e) {
     console.error('Error cargando usuarios:', e)
   } finally {
     cargando.value = false
   }
 }
+//para buscar usuario
+function buscarUsuarios() {
+  clearTimeout(timeoutBuscar)
+  timeoutBuscar = setTimeout(() => {
+    cargarUsuarios(1)
+  }, 400)
+}
+
+const paginasVisibles = computed(() => {
+  const total = totalPaginas.value
+  const actual = paginaActual.value
+
+  let inicio = actual
+  let fin = actual + 2
+
+  if (fin > total) {
+    fin = total
+    inicio = Math.max(1, total - 2)
+  }
+  const paginas = []
+  for (let i = inicio; i <= fin; i++) {
+    paginas.push(i)
+  }
+  return paginas
+})
 
 function mostrarMensaje(texto, exito = true) {
   mensaje.value = texto
@@ -182,19 +253,31 @@ async function cambiarRol(u, nuevoRol) {
   margin-bottom: 20px;
 }
 
-.toolbar h3 { font-size: 1.1rem; color: #1a3a6b; }
-
-.btn-actualizar {
-  background: #1a3a6b;
-  color: white;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.9rem;
+.toolbar h3 {
+  font-size: 1.45em;
+  font-weight: 700;
+  color: #1a3a6b;
 }
 
-.btn-actualizar:hover { background: #142d54; }
+.btn-actualizar {
+  background: #08c22a;
+  color: rgb(255, 255, 255);
+  font-size: 1.01em;
+  font-weight: 600;
+  border: none;
+  padding: 11px 29px;
+  border-radius: 6px;
+  cursor: pointer;
+
+}
+
+.btn-actualizar:hover {
+  background: #4a7ac2;
+  color: #ffffff;
+}
+.btn-actualizar disabled {
+  opacity: 0.6;
+}
 
 .tabla-container {
   background: white;
@@ -275,4 +358,204 @@ async function cambiarRol(u, nuevoRol) {
 
 .exito { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
 .error { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+
+/* buscador */
+.buscador {
+  margin-left: 230px;
+  display: flex;
+  align-items: flex-end;
+}
+
+/* WRAPPER */
+.buscador-input {
+  position: relative;
+  width: 100%;
+  max-width: 250px;
+}
+
+/* INPUT */
+.input-buscar {
+  width: 100%;
+  padding: 10px 14px 10px 40px;
+  border: 1px solid #ecedee;
+  border-radius: 8px;
+  font-size: 1.04em;
+  font-weight: 500;
+  background: #fff;
+  color: #ec0404;
+  outline: none;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+}
+
+.input-buscar:hover {
+  border-color: #cbd5e1;
+}
+
+.input-buscar:focus {
+  border-color: #1a3a6b;
+}
+
+/* ICONO IMG */
+.icono-buscar {
+  position: absolute;
+  top: 50%;
+  left: 12px;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* PLACEHOLDER */
+.input-buscar::placeholder {
+  color: #9ca3af;
+  font-size: 0.9em;
+}
+/* estilos de paginacion */
+.paginacion {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 20px;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.btn-pagina {
+  background: #026d5f;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: 0.2s;
+}
+
+.btn-pagina:hover:not(:disabled) {
+  background: #01c5ab;
+}
+
+.btn-pagina:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.paginas-numeros {
+  display: flex;
+  gap: 4px;
+}
+
+.btn-num {
+  background: #026d5f;
+  color:#ffffff;
+  border: none;
+  padding: 7px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: 0.2s;
+}
+
+.btn-num:hover {
+  background: #01c5ab;
+}
+
+.btn-num.activo {
+  background: #00f483;
+  color: white;
+  font-weight: bold;
+}
+
+
+/* para el responsive */
+@media (max-width: 768px) {
+
+  /* Toolbar en columna */
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .toolbar h3 {
+    font-size: 1.5em;
+    text-align: left;
+  }
+
+  /* Buscador full ancho */
+  .buscador {
+    margin-left: 0;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .buscador-input {
+    max-width: 100%;
+  }
+
+  .input-buscar {
+    width: 100%;
+    font-size: 0.95em;
+  }
+
+  /* Botón actualizar full ancho */
+  .btn-actualizar {
+    width: 100%;
+    text-align: center;
+    padding: 10px;
+  }
+
+  /* Tabla scroll horizontal */
+  .tabla-container {
+    overflow-x: auto;
+  }
+
+  .tabla {
+    min-width: 900px; /* importante para no romper columnas */
+  }
+
+  /* Ajustes de acciones */
+  .acciones {
+    gap: 3px;
+  }
+
+  .btn-accion img {
+    width: 16px;
+    height: 16px;
+  }
+
+  /* Select rol más compacto */
+  .select-rol {
+    font-size: 0.75rem;
+    padding: 3px 6px;
+  }
+
+  /* Paginación tipo scroll horizontal */
+  .paginacion {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding: 10px;
+  }
+  .paginas-numeros {
+    display: flex;
+    gap: 6px;
+  }
+  .paginacion button {
+    flex-shrink: 0;
+    padding: 5px 8px;
+    font-size: 0.8rem;
+  }
+  .btn-extremo {
+    display: none;
+  }
+}
+
+
 </style>

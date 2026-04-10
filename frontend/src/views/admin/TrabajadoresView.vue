@@ -3,6 +3,13 @@
 
     <div class="toolbar">
       <h3>Gestión de Trabajadores</h3>
+      <div class="buscador">
+        <div class="buscador-input">
+          <img :src="iconoLupa" class="icono-buscar" alt="Buscar" />
+          <input v-model="buscar" @input="buscarTrabajadores" type="text"
+          placeholder="Buscar por DNI, nombre o apellido..." class="input-buscar" />
+        </div>
+      </div>
       <button @click="abrirModalCrear" class="btn-nuevo">+ Nuevo Trabajador</button>
     </div>
 
@@ -22,15 +29,12 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="t in trabajadores" :key="t.id">
+          <tr v-for="t in trabajadoresPaginados" :key="t.id">
             <td>
-              <img
-                :src="t.foto_url ? `http://127.0.0.1:8000${t.foto_url}` : '/sin-foto.png'"
-                class="foto-trabajador"
-                alt="Foto"
-              />
+              <img :src="t.foto_url ? `http://127.0.0.1:8000${t.foto_url}` : '/sin-foto.png'" class="foto-trabajador"
+                alt="Foto" />
             </td>
-            <td>{{ t.apellido_paterno }} {{ t.apellido_materno  }} {{t.nombres }}</td>
+            <td>{{ t.apellido_paterno }} {{ t.apellido_materno }} {{ t.nombres }}</td>
             <td>{{ t.dni }}</td>
             <td>{{ t.cargo }}</td>
             <td>
@@ -46,17 +50,12 @@
             <td class="acciones">
               <!-- BOTÓN EDITAR -->
               <button @click="abrirModalEditar(t)" class="btn-accion" title="Editar">
-                <img :src="iconoEditar" alt="Editar" width="18" height="18" />
+                <img :src="iconoEditar" alt="Editar" width="22" height="22" />
               </button>
 
               <!-- INTERRUPTOR: deshabilitado si contrato vencido -->
               <label class="switch-button" :title="contratoVencido(t) ? 'Contrato vencido — no se puede activar' : ''">
-                <input
-                  type="checkbox"
-                  :checked="t.activo"
-                  :disabled="contratoVencido(t)"
-                  @change="toggleActivo(t)"
-                >
+                <input type="checkbox" :checked="t.activo" :disabled="contratoVencido(t)" @change="toggleActivo(t)">
                 <span class="slider-round" :class="{ 'slider-disabled': contratoVencido(t) }"></span>
               </label>
 
@@ -69,6 +68,29 @@
           </tr>
         </tbody>
       </table>
+    </div>
+    <div class="paginacion" v-if="totalPaginas > 1">
+      <button @click="paginaActual = 1" :disabled="paginaActual === 1" class="btn-pagina btn-extremo">«</button>
+
+      <button @click="paginaActual--" :disabled="paginaActual === 1" class="btn-pagina">
+        ‹ Anterior
+      </button>
+
+      <div class="paginas-numeros">
+        <button v-for="p in paginasVisibles" :key="p" @click="paginaActual = p"
+          :class="['btn-num', p === paginaActual ? 'activo' : '']">
+          {{ p }}
+        </button>
+      </div>
+
+      <button @click="paginaActual++" :disabled="paginaActual === totalPaginas" class="btn-pagina">
+        Siguiente ›
+      </button>
+
+      <button @click="paginaActual = totalPaginas" :disabled="paginaActual === totalPaginas"
+        class="btn-pagina btn-extremo">
+        »
+      </button>
     </div>
 
     <!-- MODAL CREAR/EDITAR -->
@@ -97,7 +119,7 @@
             </div>
             <div class="campo">
               <label>Teléfono</label>
-              <input v-model="form.telefono" type="text" placeholder="Teléfono" />
+              <input v-model="form.telefono" type="text" maxlength="9" placeholder="Teléfono" />
             </div>
             <div class="campo">
               <label>Cargo</label>
@@ -106,6 +128,10 @@
             <div class="campo">
               <label>Fecha inicio laboral</label>
               <input v-model="form.fecha_inicio_laboral" type="date" />
+            </div>
+            <div class="campo">
+              <label>Fecha fin laboral</label>
+              <input v-model="form.fecha_fin_laboral" type="date" />
             </div>
             <div class="campo" v-if="!modoEdicion">
               <label>Rol</label>
@@ -134,16 +160,11 @@
 
           <!-- OPCIONES -->
           <div class="opciones-foto">
-            <button
-              @click="modoFoto = 'camara'"
-              :class="['btn-opcion', modoFoto === 'camara' ? 'activo' : '']">
-            Usar cámara
+            <button @click="modoFoto = 'camara'" :class="['btn-opcion', modoFoto === 'camara' ? 'activo' : '']">
+              Usar cámara
             </button>
-            <button
-              @click="modoFoto = 'archivo'"
-              :class="['btn-opcion', modoFoto === 'archivo' ? 'activo' : '']"
-            >
-            Cargar imágenes
+            <button @click="modoFoto = 'archivo'" :class="['btn-opcion', modoFoto === 'archivo' ? 'activo' : '']">
+              Cargar imágenes
             </button>
           </div>
 
@@ -160,16 +181,10 @@
 
           <!-- CARGAR ARCHIVOS -->
           <div v-if="modoFoto === 'archivo'" class="archivo-section">
-            <input
-              type="file"
-              accept="image/*"
-              multiple
-              @change="cargarArchivos"
-              ref="inputArchivo"
-              style="display:none"
-            />
+            <input type="file" accept="image/*" multiple @change="cargarArchivos" ref="inputArchivo"
+              style="display:none" />
             <button @click="$refs.inputArchivo.click()" class="btn-cargar">
-            Seleccionar 3 imágenes
+              Seleccionar 3 imágenes
             </button>
             <p class="hint">Seleccione exactamente 3 imágenes</p>
           </div>
@@ -188,11 +203,7 @@
 
           <div class="modal-acciones">
             <button @click="paso = 1" class="btn-cancelar">← Volver</button>
-            <button
-              @click="guardarConFotos"
-              :disabled="fotosCapturadas.length !== 3 || procesando"
-              class="btn-guardar"
-            >
+            <button @click="guardarConFotos" :disabled="fotosCapturadas.length !== 3 || procesando" class="btn-guardar">
               {{ procesando ? 'Procesando...' : 'Guardar trabajador' }}
             </button>
           </div>
@@ -205,10 +216,11 @@
 </template>
 
 <script setup>
-import iconoEditar from '@/assets/icon-lapicito.svg'
+import iconoEditar from '@/assets/icon-lapiz.svg'
 import iconBasura from '@/assets/icon-basura.svg'
+import iconoLupa from '@/assets/lupa-buscador.svg'
 
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import AdminLayout from '@/components/AdminLayout.vue'
 import api from '@/services/api'
 
@@ -227,12 +239,19 @@ const videoRef = ref(null)
 const canvasRef = ref(null)
 const inputArchivo = ref(null)
 let stream = null
+const buscar = ref('')
+const trabajadoresOriginal = ref([])
+const paginaActual = ref(1)
+const porPagina = 6
+
 
 const form = ref({
   nombres: '', apellido_paterno: '', apellido_materno: '',
   dni: '', telefono: '', cargo: '', fecha_inicio_laboral: '',
   rol: 'TRABAJADOR'
 })
+
+
 
 onMounted(async () => {
   await cargarTrabajadores()
@@ -243,12 +262,55 @@ async function cargarTrabajadores() {
   try {
     const response = await api.get('/api/trabajadores/')
     trabajadores.value = response.data
+    trabajadoresOriginal.value = response.data
   } catch (e) {
     console.error('Error:', e)
   } finally {
     cargando.value = false
   }
 }
+
+function buscarTrabajadores() {
+  paginaActual.value = 1
+  const texto = buscar.value.toLowerCase()
+
+  trabajadores.value = trabajadoresOriginal.value.filter(t =>
+    t.dni.includes(texto) ||
+    t.nombres.toLowerCase().includes(texto) ||
+    t.apellido_paterno.toLowerCase().includes(texto) ||
+    t.apellido_materno.toLowerCase().includes(texto)
+  )
+}
+
+const trabajadoresPaginados = computed(() => {
+  const inicio = (paginaActual.value - 1) * porPagina
+  const fin = inicio + porPagina
+  return trabajadores.value.slice(inicio, fin)
+})
+
+const totalPaginas = computed(() => {
+  return Math.ceil(trabajadores.value.length / porPagina)
+})
+
+const paginasVisibles = computed(() => {
+  const total = totalPaginas.value
+  const actual = paginaActual.value
+
+  let inicio = actual
+  let fin = actual + 2
+
+  if (fin > total) {
+    fin = total
+    inicio = Math.max(1, total - 2)
+  }
+
+  const paginas = []
+  for (let i = inicio; i <= fin; i++) {
+    paginas.push(i)
+  }
+
+  return paginas
+})
 
 function abrirModalCrear() {
   modoEdicion.value = false
@@ -257,7 +319,7 @@ function abrirModalCrear() {
   errorModal.value = ''
   form.value = {
     nombres: '', apellido_paterno: '', apellido_materno: '',
-    dni: '', telefono: '', cargo: '', fecha_inicio_laboral: '',
+    dni: '', telefono: '', cargo: '', fecha_inicio_laboral: '', fecha_fin_laboral: '',
     rol: 'TRABAJADOR'
   }
   mostrarModal.value = true
@@ -275,6 +337,8 @@ function abrirModalEditar(t) {
     telefono: t.telefono || '',
     cargo: t.cargo,
     fecha_inicio_laboral: t.fecha_inicio_laboral?.split('T')[0] || '',
+    fecha_fin_laboral: t.fecha_fin_laboral?.split('T')[0] || '',
+
     rol: 'TRABAJADOR'
   }
   errorModal.value = ''
@@ -290,7 +354,7 @@ function cerrarModal() {
 }
 
 async function siguientePaso() {
-  if (!form.value.nombres || !form.value.apellido_paterno || !form.value.dni || !form.value.cargo || !form.value.fecha_inicio_laboral) {
+  if (!form.value.nombres || !form.value.apellido_paterno || !form.value.dni || !form.value.cargo || !form.value.fecha_inicio_laboral || !form.value.fecha_fin_laboral) {
     errorModal.value = 'Complete todos los campos obligatorios'
     return
   }
@@ -397,6 +461,7 @@ async function guardarConFotos() {
       telefono: form.value.telefono,
       cargo: form.value.cargo,
       fecha_inicio_laboral: form.value.fecha_inicio_laboral,
+      fecha_fin_laboral: form.value.fecha_fin_laboral,
     })
     const trabajador = response.data
 
@@ -494,6 +559,13 @@ async function eliminar(t) {
 </script>
 
 <style scoped>
+/* para el titulo */
+.toolbar h3 {
+  font-size: 1.45em;
+  font-weight: 700;
+  color: #1a3a6b;
+}
+
 .toolbar {
   display: flex;
   justify-content: space-between;
@@ -501,19 +573,24 @@ async function eliminar(t) {
   margin-bottom: 20px;
 }
 
-.toolbar h3 { font-size: 1.1rem; color: #1a3a6b; }
-
 .btn-nuevo {
-  background: #1a3a6b;
-  color: white;
+  background: #08c22a;
+  color: rgb(255, 255, 255);
+  font-size: 1.01em;
+  font-weight: 600;
   border: none;
-  padding: 10px 20px;
+  padding: 11px 29px;
   border-radius: 6px;
   cursor: pointer;
-  font-size: 0.9rem;
 }
 
-.btn-nuevo:hover { background: #142d54; }
+.btn-nuevo:hover {
+  background: #4a7ac2;
+  color: #fff;
+}
+.btn-nuevo disabled {
+  opacity: 0.6;
+}
 
 .tabla-container {
   background: white;
@@ -875,5 +952,196 @@ input:focus + .slider-round {
   height: 26px;
   margin-right: 6px;
 }
+
+/* buscador */
+.buscador {
+  margin-left: 230px;
+  display: flex;
+  align-items: flex-end;
+}
+
+/* WRAPPER */
+.buscador-input {
+  position: relative;
+  width: 100%;
+  max-width: 250px;
+}
+
+/* INPUT */
+.input-buscar {
+  width: 100%;
+  padding: 10px 14px 10px 40px;
+  border: 1px solid #ecedee;
+  border-radius: 8px;
+  font-size: 1.04em;
+  font-weight: 500;
+  background: #fff;
+  color: #ec0404;
+  outline: none;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+}
+
+.input-buscar:hover {
+  border-color: #cbd5e1;
+}
+
+.input-buscar:focus {
+  border-color: #1a3a6b;
+}
+
+/* ICONO IMG */
+.icono-buscar {
+  position: absolute;
+  top: 50%;
+  left: 12px;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* PLACEHOLDER */
+.input-buscar::placeholder {
+  color: #9ca3af;
+  font-size: 0.9em;
+}
+
+/* paginacion */
+.paginacion {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 14px;
+  padding: 15px;
+}
+.btn-num.activo {
+  background: #00f483;
+  font-weight: bold;
+}
+.btn-num:hover {
+  background: #01c5ab;
+}
+
+.paginacion button {
+  background: #026d5f;
+  flex-shrink: 0;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.btn-pagina:hover:not(:disabled) {
+  background: #01c5ab;
+}
+.paginacion button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+  .paginas-numeros {
+    display: flex;
+    gap: 6px;
+  }
+
+
+/* para el responsive */
+@media (max-width: 768px) {
+
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .toolbar h3 {
+    font-size: 1.5em;
+  }
+
+  .buscador {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .buscador-input {
+    max-width: 100%;
+  }
+
+  .btn-nuevo {
+    width: 100%;
+    text-align: center;
+    padding: 10px;
+  }
+    .tabla-container {
+    overflow-x: auto;
+  }
+
+  .tabla {
+    min-width: 700px;
+  }
+    .acciones {
+    gap: 3px;
+  }
+
+  .btn-accion img {
+    width: 16px;
+    height: 16px;
+  }
+
+  .switch-button {
+    transform: scale(0.85);
+  }
+    .modal {
+    padding: 20px;
+    max-width: 100%;
+    border-radius: 10px;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr; 
+  }
+
+  .modal-acciones {
+    flex-direction: column;
+  }
+
+  .btn-cancelar,
+  .btn-guardar {
+    width: 100%;
+  }
+    .foto-preview-item img {
+    width: 70px;
+    height: 70px;
+  }
+
+  .video {
+    max-width: 100%;
+  }
+  .paginacion {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+
+    flex-wrap: nowrap;   
+    overflow-x: auto;     
+    padding: 10px;
+  }
+  .paginas-numeros {
+    display: flex;
+    gap: 6px;
+  }
+  .paginacion button {
+    flex-shrink: 0; 
+    padding: 5px 8px;
+    font-size: 0.8rem;
+  }
+
+  .btn-extremo {
+    display: none;
+  }
+}
+
 
 </style>

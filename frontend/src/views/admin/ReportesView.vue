@@ -199,7 +199,7 @@ function formatearFechaHora(fecha) {
 }
 
 .filtros-card h3 {
-  font-size: 1.1rem;
+  font-size: 1.45em;
   color: #1a3a6b;
   margin-bottom: 20px;
 }
@@ -213,7 +213,7 @@ function formatearFechaHora(fecha) {
 
 .campo label {
   display: block;
-  font-size: 0.82rem;
+  font-size: 1em;
   font-weight: 600;
   color: #1a3a6b;
   margin-bottom: 4px;
@@ -276,10 +276,20 @@ function formatearFechaHora(fecha) {
 
 .stats-reporte {
   display: flex;
-  gap: 16px;
+  gap: 25px;
   margin-bottom: 20px;
   flex-wrap: wrap;
 }
+.stats-reporte:hover {
+  display: flex;
+  gap: 25px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+      border-left 0.3s ease,
+      box-shadow 0.3s ease;
+}
+
 
 .stat {
   background: white;
@@ -289,17 +299,28 @@ function formatearFechaHora(fecha) {
   box-shadow: 0 2px 8px rgba(0,0,0,0.06);
   flex: 1;
   min-width: 120px;
+  transition: all 0.3s ease;
 }
+
+.stat:hover {
+  transform: scale(1.08);
+  background-color: #000000;
+}
+.stat:hover .stat-valor,
+.stat:hover .stat-label {
+  color: #fff;
+}
+
 
 .stat-valor {
   display: block;
-  font-size: 1.8rem;
+  font-size: 1.9em;
   font-weight: bold;
   color: #1a3a6b;
 }
 
 .stat-label {
-  font-size: 0.78rem;
+  font-size: 1.02em;
   color: #666;
 }
 

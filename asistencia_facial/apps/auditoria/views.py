@@ -10,6 +10,8 @@ from .models import Auditoria
 from .serializers import AuditoriaSerializer
 from apps.usuarios.permissions import EsAdmin
 from django.db import models as db_models
+from django.utils import timezone
+import datetime
 
 
 class AuditoriaListarView(APIView):
@@ -37,12 +39,22 @@ class AuditoriaListarView(APIView):
         # Filtro por fecha inicio
         fecha_inicio = request.query_params.get('fecha_inicio', '')
         if fecha_inicio:
-            queryset = queryset.filter(fecha__date__gte=fecha_inicio)
+            try: 
+                dt_inicio = datetime.datetime.strptime(fecha_inicio, '%Y-%m-%d')
+                dt_inicio = timezone.make_aware(dt_inicio)
+                queryset = queryset.filter(fecha__gte=dt_inicio)
+            except ValueError:
+                pass
 
         # Filtro por fecha fin
         fecha_fin = request.query_params.get('fecha_fin', '')
         if fecha_fin:
-            queryset = queryset.filter(fecha__date__lte=fecha_fin)
+            try:
+                dt_fin = datetime.datetime.strptime(fecha_fin, '%Y-%m-%d')
+                dt_fin = timezone.make_aware(dt_fin.replace(hour=23, minute=59, second=59))
+                queryset = queryset.filter(fecha__lte=dt_fin)
+            except ValueError:
+                pass
 
         # Paginación
         pagina    = int(request.query_params.get('pagina', 1))
