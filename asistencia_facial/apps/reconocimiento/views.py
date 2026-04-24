@@ -12,6 +12,7 @@ from apps.usuarios.models import Usuario
 from apps.auditoria.services import registrar_auditoria
 from .services import generar_embedding, generar_embedding_promedio, comparar_embeddings
 from apps.usuarios.permissions import EsAdmin
+import numpy as np
 import logging
 
 logger = logging.getLogger(__name__)
@@ -112,7 +113,7 @@ class VerificarRostroView(APIView):
                     status=status.HTTP_403_FORBIDDEN
                 )
 
-            # ── IP ──────────────────────────────────────────────────────
+            # ── IP ─────────────────────────────────────────────────────
             ip = get_client_ip(request)
             print("IP detectada:", ip)
 
@@ -126,6 +127,12 @@ class VerificarRostroView(APIView):
                     ip=ip
                 )
                 return Response({'error': ip_error}, status=status.HTTP_403_FORBIDDEN)
+
+            # ── DIAGNÓSTICO DEL EMBEDDING EN BD ────────────────────────
+            emb_bd = trabajador.embedding
+            if emb_bd:
+                arr_bd = np.array(emb_bd, dtype=np.float64)
+                print(f"[Diagnóstico BD] dim={arr_bd.shape[0]} | norma={np.linalg.norm(arr_bd):.6f}")
 
             # ── RECONOCIMIENTO ──────────────────────────────────────────
             print("Generando embedding...")
@@ -142,7 +149,7 @@ class VerificarRostroView(APIView):
                 config.umbral_similitud
             )
 
-            # ── FALLÓ ───────────────────────────────────────────────────
+            # ── FALLÓ ──────────────────────────────────────────────────
             if not verificado:
                 usuario.intentos_fallidos += 1
 
@@ -191,9 +198,7 @@ class VerificarRostroView(APIView):
 
             print("Registrando marcación...")
 
-            # El service SIEMPRE devuelve (marcacion, mensaje).
-            # Solo falla si no hay configuración (marcacion=None).
-            marcacion, mensaje = registrar_marcacion(
+            marcacion, error = registrar_marcacion(
                 trabajador, ip, dispositivo,
                 latitud=latitud,
                 longitud=longitud,
@@ -202,38 +207,25 @@ class VerificarRostroView(APIView):
                 ip_info=ip_info_str or None,
             )
 
-            if marcacion is None:
-                # Solo pasa si no hay config — error real
-                print("Error marcación: sin configuración")
-                return Response({'error': mensaje}, status=status.HTTP_400_BAD_REQUEST)
+            if error:
+                print("Error marcación:", error)
+                return Response({'error': error}, status=status.HTTP_400_BAD_REQUEST)
 
-            # ── Registrar auditoría ─────────────────────────────────────
             registrar_auditoria(
                 usuario=usuario,
                 accion='MARCACION_EXITOSA',
-                descripcion=f'Marcación {marcacion.tipo} — {mensaje} — {ciudad}, {pais}',
+                descripcion=f'Marcación {marcacion.tipo} - {ciudad}, {pais}',
                 ip=ip
             )
 
-            # ── Respuesta siempre exitosa al frontend ───────────────────
-            # va_a_asistencia determina si es "válida para asistencia" o solo historial
-            tipo_display = marcacion.tipo
-            if marcacion.tipo == 'ENTRADA_VALIDA':
-                tipo_display = 'ENTRADA'
-            elif marcacion.tipo == 'SALIDA_VALIDA':
-                tipo_display = 'SALIDA'
-
             return Response({
-                'mensaje': mensaje,
+                'mensaje': 'Verificación exitosa',
                 'similitud': similitud,
-                'va_a_asistencia': marcacion.va_a_asistencia,
                 'marcacion': {
-                    'id':              marcacion.id,
-                    'tipo':            tipo_display,
-                    'tipo_real':       marcacion.tipo,
-                    'estado':          marcacion.estado,
-                    'fecha':           marcacion.fecha,
-                    'va_a_asistencia': marcacion.va_a_asistencia,
+                    'id':     marcacion.id,
+                    'tipo':   marcacion.tipo,
+                    'estado': marcacion.estado,
+                    'fecha':  marcacion.fecha,
                 },
                 'ubicacion': {
                     'ip':     ip,
