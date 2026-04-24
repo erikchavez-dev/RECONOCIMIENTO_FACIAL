@@ -1,7 +1,4 @@
 <!-- ReportesView.vue — Reportes de asistencia por rango de fechas -->
-<!-- Filtros: fecha inicio, fecha fin -->
-<!-- Botones: Ver reporte y Descargar PDF -->
-
 <template>
   <AdminLayout titulo="Reportes">
 
@@ -13,18 +10,47 @@
           <label>Fecha inicio</label>
           <input v-model="fechaInicio" type="date" />
         </div>
+
         <div class="campo">
           <label>Fecha fin</label>
           <input v-model="fechaFin" type="date" />
+        </div>
+
+        <!-- Filtro por estado del trabajador -->
+        <div class="campo">
+          <label>Filtrar por</label>
+          <select v-model="filtroEstado" @change="onFiltroEstadoCambio">
+            <option value="todos">Todos los trabajadores</option>
+            <option value="activos">Solo trabajadores activos</option>
+            <option value="inactivos">Solo trabajadores inactivos</option>
+          </select>
+        </div>
+
+        <!-- Trabajador específico (opcional) -->
+        <div class="campo">
+          <label>Trabajador (opcional)</label>
+          <select v-model="trabajadorId">
+            <option value="">
+              {{
+                filtroEstado === 'activos'   ? 'Todos los activos' :
+                filtroEstado === 'inactivos' ? 'Todos los inactivos' :
+                'Todos los trabajadores'
+              }}
+            </option>
+            <option v-for="t in trabajadoresFiltrados" :key="t.id" :value="t.id">
+              {{ t.nombres }} {{ t.apellido_paterno }} — {{ t.dni }}
+              {{ !t.activo ? '(Inactivo)' : '' }}
+            </option>
+          </select>
         </div>
       </div>
 
       <div class="botones-filtro">
         <button @click="verReporte" :disabled="cargando" class="btn-ver">
-        {{ cargando ? 'Cargando...' : 'Ver reporte' }}
+          {{ cargando ? 'Cargando...' : 'Ver reporte' }}
         </button>
         <button @click="descargarPDF" :disabled="descargando" class="btn-pdf">
-        {{ descargando ? 'Generando...' : 'Descargar PDF' }}
+          {{ descargando ? 'Generando...' : 'Descargar PDF' }}
         </button>
       </div>
 
@@ -99,47 +125,97 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import AdminLayout from '@/components/AdminLayout.vue'
 import api from '@/services/api'
 
-const fechaInicio = ref('')
-const fechaFin = ref('')
+const fechaInicio  = ref('')
+const fechaFin     = ref('')
 const trabajadorId = ref('')
-const trabajadores = ref([])
-const reporte = ref(null)
-const cargando = ref(false)
-const descargando = ref(false)
-const error = ref('')
+const filtroEstado = ref('todos')   // 'todos' | 'activos' | 'inactivos'
+const trabajadores = ref([])        // lista completa (activos + inactivos)
+const reporte      = ref(null)
+const cargando     = ref(false)
+const descargando  = ref(false)
+const error        = ref('')
+
+// Lista filtrada según el selector de estado
+const trabajadoresFiltrados = computed(() => {
+  if (filtroEstado.value === 'activos')   return trabajadores.value.filter(t =>  t.activo)
+  if (filtroEstado.value === 'inactivos') return trabajadores.value.filter(t => !t.activo)
+  return trabajadores.value
+})
+
+// Al cambiar el filtro de estado, resetear el trabajador seleccionado
+function onFiltroEstadoCambio() {
+  trabajadorId.value = ''
+}
 
 onMounted(async () => {
-  // Cargar lista de trabajadores para el filtro
   try {
-    const response = await api.get('/api/trabajadores/')
-    trabajadores.value = response.data
+    // Llamada 1: activos (comportamiento original)
+    const resActivos   = await api.get('/api/trabajadores/')
+    const listaActivos = resActivos.data.results
+      || resActivos.data.trabajadores
+      || resActivos.data
+      || []
+
+    // Llamada 2: inactivos usando el nuevo parámetro ?activo=false
+    let listaInactivos = []
+    try {
+      const resInactivos = await api.get('/api/trabajadores/?activo=false')
+      const raw = resInactivos.data.results
+        || resInactivos.data.trabajadores
+        || resInactivos.data
+        || []
+      // Evitar duplicados por si la API devuelve todos en ambas llamadas
+      const idsActivos = new Set(listaActivos.map(t => t.id))
+      listaInactivos = raw.filter(t => !idsActivos.has(t.id))
+    } catch {
+      // Si ?activo=false no está soportado aún, solo se muestran activos
+    }
+
+    const todos = [...listaActivos, ...listaInactivos]
+    trabajadores.value = todos.sort((a, b) =>
+      a.apellido_paterno.localeCompare(b.apellido_paterno)
+    )
   } catch (e) {
     console.error('Error cargando trabajadores:', e)
   }
 
-  // Fecha por defecto: primer día del mes actual hasta hoy
-  const hoy = new Date()
+  // Fechas por defecto: primer día del mes actual → hoy
+  const hoy       = new Date()
   const primerDia = new Date(hoy.getFullYear(), hoy.getMonth(), 1)
-  fechaFin.value = hoy.toISOString().split('T')[0]
+  fechaFin.value    = hoy.toISOString().split('T')[0]
   fechaInicio.value = primerDia.toISOString().split('T')[0]
 })
+
+// Construye los query params comunes para reporte y PDF
+function buildParams() {
+  const params = new URLSearchParams({
+    fecha_inicio: fechaInicio.value,
+    fecha_fin:    fechaFin.value,
+  })
+  if (trabajadorId.value) {
+    // Trabajador específico seleccionado → ignora filtro de estado
+    params.append('trabajador_id', trabajadorId.value)
+  } else if (filtroEstado.value !== 'todos') {
+    // Sin trabajador específico → enviar filtro de estado
+    params.append('estado_trabajador', filtroEstado.value)
+  }
+  return params.toString()
+}
 
 async function verReporte() {
   if (!fechaInicio.value || !fechaFin.value) {
     error.value = 'Seleccione fecha inicio y fecha fin'
     return
   }
-  error.value = ''
+  error.value    = ''
   cargando.value = true
   try {
-    let url = `/api/marcaciones/reporte/?fecha_inicio=${fechaInicio.value}&fecha_fin=${fechaFin.value}`
-    if (trabajadorId.value) url += `&trabajador_id=${trabajadorId.value}`
-    const response = await api.get(url)
-    reporte.value = response.data
+    const response = await api.get(`/api/marcaciones/reporte/?${buildParams()}`)
+    reporte.value  = response.data
   } catch (e) {
     error.value = e.response?.data?.error || 'Error al cargar el reporte'
   } finally {
@@ -152,16 +228,16 @@ async function descargarPDF() {
     error.value = 'Seleccione fecha inicio y fecha fin'
     return
   }
-  error.value = ''
+  error.value       = ''
   descargando.value = true
   try {
-    let url = `/api/marcaciones/reporte/pdf/?fecha_inicio=${fechaInicio.value}&fecha_fin=${fechaFin.value}`
-    if (trabajadorId.value) url += `&trabajador_id=${trabajadorId.value}`
-
-    const response = await api.get(url, { responseType: 'blob' })
+    const response = await api.get(
+      `/api/marcaciones/reporte/pdf/?${buildParams()}`,
+      { responseType: 'blob' }
+    )
     const blob = new Blob([response.data], { type: 'application/pdf' })
     const link = document.createElement('a')
-    link.href = URL.createObjectURL(blob)
+    link.href     = URL.createObjectURL(blob)
     link.download = `reporte_asistencia_${fechaInicio.value}_${fechaFin.value}.pdf`
     link.click()
     URL.revokeObjectURL(link.href)
@@ -190,7 +266,7 @@ function formatearFechaHora(fecha) {
 }
 
 .filtros-card h3 {
-  font-size: 1.1rem;
+  font-size: 1.45em;
   color: #1a3a6b;
   margin-bottom: 20px;
 }
@@ -204,7 +280,7 @@ function formatearFechaHora(fecha) {
 
 .campo label {
   display: block;
-  font-size: 0.82rem;
+  font-size: 1em;
   font-weight: 600;
   color: #1a3a6b;
   margin-bottom: 4px;
@@ -267,7 +343,7 @@ function formatearFechaHora(fecha) {
 
 .stats-reporte {
   display: flex;
-  gap: 16px;
+  gap: 25px;
   margin-bottom: 20px;
   flex-wrap: wrap;
 }
@@ -280,19 +356,14 @@ function formatearFechaHora(fecha) {
   box-shadow: 0 2px 8px rgba(0,0,0,0.06);
   flex: 1;
   min-width: 120px;
+  transition: all 0.3s ease;
 }
 
-.stat-valor {
-  display: block;
-  font-size: 1.8rem;
-  font-weight: bold;
-  color: #1a3a6b;
-}
+.stat:hover { transform: scale(1.08); background-color: #000; }
+.stat:hover .stat-valor, .stat:hover .stat-label { color: #fff; }
 
-.stat-label {
-  font-size: 0.78rem;
-  color: #666;
-}
+.stat-valor { display: block; font-size: 1.9em; font-weight: bold; color: #1a3a6b; }
+.stat-label { font-size: 1.02em; color: #666; }
 
 .tabla-container {
   background: white;
@@ -301,11 +372,7 @@ function formatearFechaHora(fecha) {
   box-shadow: 0 2px 8px rgba(0,0,0,0.06);
 }
 
-.tabla {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.88rem;
-}
+.tabla { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
 
 .tabla th {
   background: #1a3a6b;
@@ -315,29 +382,13 @@ function formatearFechaHora(fecha) {
   font-weight: 600;
 }
 
-.tabla td {
-  padding: 12px 16px;
-  border-bottom: 1px solid #f0f0f0;
-  color: #333;
-}
-
+.tabla td { padding: 12px 16px; border-bottom: 1px solid #f0f0f0; color: #333; }
 .tabla tr:hover { background: #f8fafc; }
+.vacio { text-align: center; color: #666; padding: 40px !important; }
 
-.vacio {
-  text-align: center;
-  color: #666;
-  padding: 40px !important;
-}
-
-.badge {
-  padding: 3px 10px;
-  border-radius: 20px;
-  font-size: 0.78rem;
-  font-weight: 600;
-}
-
-.badge-entrada { background: #dbeafe; color: #1d4ed8; }
-.badge-salida { background: #f3f4f6; color: #374151; }
-.badge-puntual { background: #dcfce7; color: #16a34a; }
+.badge { padding: 3px 10px; border-radius: 20px; font-size: 0.78rem; font-weight: 600; }
+.badge-entrada  { background: #dbeafe; color: #1d4ed8; }
+.badge-salida   { background: #f3f4f6; color: #374151; }
+.badge-puntual  { background: #dcfce7; color: #16a34a; }
 .badge-tardanza { background: #fef9c3; color: #ca8a04; }
 </style>

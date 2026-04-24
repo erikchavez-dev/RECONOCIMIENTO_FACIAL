@@ -6,7 +6,10 @@ from .views import (
     MarcacionHoyView,
     ReporteRangoFechasView,
     ReportePDFView,
-    EstadisticasDashboardView
+    EstadisticasDashboardView,
+    AsistenciaResumenView,
+    AsistenciaAdminView,
+    EditarMarcacionAdminView,
 )
 
 urlpatterns = [
@@ -17,4 +20,7 @@ urlpatterns = [
     path('reporte/', ReporteRangoFechasView.as_view(), name='marcacion-reporte'),
     path('reporte/pdf/', ReportePDFView.as_view(), name='marcacion-reporte-pdf'),
     path('estadisticas/', EstadisticasDashboardView.as_view(), name='marcacion-estadisticas'),
+    path('asistencia/', AsistenciaResumenView.as_view(), name='asistencia-resumen'),
+    path('asistencia/admin/', AsistenciaAdminView.as_view(), name='asistencia-admin'),
+    path('editar-admin/', EditarMarcacionAdminView.as_view()),
 ]

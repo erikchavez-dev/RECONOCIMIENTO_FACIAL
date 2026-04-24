@@ -19,8 +19,11 @@ const routes = [
 
   // Panel del trabajador
   { path: '/trabajador/panel', component: () => import('@/views/trabajador/PanelView.vue'), meta: { requiresAuth: true, rol: 'TRABAJADOR' } },
-  { path: '/trabajador/historial', component: () => import('@/views/trabajador/HistorialView.vue'), meta: { requiresAuth: true, rol: 'TRABAJADOR' } },
+  //{ path: '/trabajador/historial', component: () => import('@/views/trabajador/HistorialView.vue'), meta: { requiresAuth: true, rol: 'TRABAJADOR' } },
+  { path  : '/trabajador/historial', component: () => import('@/views/trabajador/Historial/index.vue'), meta: { requiresAuth: true, rol: 'TRABAJADOR' } },
   { path: '/trabajador/marcar', component: () => import('@/views/trabajador/MarcarView.vue'), meta: { requiresAuth: true, rol: 'TRABAJADOR' } },
+  { path: '/trabajador/asistencia', component: () => import('@/views/trabajador/Asistencia/index.vue'), meta: { requiresAuth: true, rol: 'TRABAJADOR' } },
+  //{ path: '/trabajador/asistencia', component: () => import('@/views/trabajador/AsistenciaView.vue'), meta: { requiresAuth: true, rol: 'TRABAJADOR' } },
 
   // Panel del administrador
   { path: '/admin/dashboard', component: () => import('@/views/admin/DashboardView.vue'), meta: { requiresAuth: true, rol: 'ADMIN' } },
@@ -30,6 +33,7 @@ const routes = [
   { path: '/admin/configuracion', component: () => import('@/views/admin/ConfiguracionView.vue'), meta: { requiresAuth: true, rol: 'ADMIN' } },
   { path: '/admin/auditoria', component: () => import('@/views/admin/AuditoriaView.vue'), meta: { requiresAuth: true, rol: 'ADMIN' } },
   { path: '/admin/usuarios', component: () => import('@/views/admin/UsuariosView.vue'), meta: { requiresAuth: true, rol: 'ADMIN' } },
+  { path: '/admin/asistencia', component: () => import('@/views/admin/AsistenciaView.vue'), meta: { requiresAuth: true, rol: 'ADMIN' } },
 ]
 
 

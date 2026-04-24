@@ -13,38 +13,24 @@ from django.contrib.auth.hashers import make_password
 from apps.usuarios.permissions import EsAdmin
 import os
 from django.conf import settings
-from django.db import models as db_models
-
-
 
 
 class TrabajadorListarCrearView(APIView):
     permission_classes = [EsAdmin]
 
     def get(self, request):
-        queryset = Trabajador.objects.all().order_by('apellido_paterno')
-        # Búsqueda
-        buscar = request.query_params.get('buscar', '')
-        if buscar:
-            queryset = queryset.filter(
-                db_models.Q(dni__icontains=buscar) |
-                db_models.Q(nombres__icontains=buscar) |
-                db_models.Q(apellido_paterno__icontains=buscar)
-            )
-        # Paginación
-        pagina = int(request.query_params.get('pagina', 1))
-        por_pagina = 10
-        total = queryset.count()
-        inicio = (pagina - 1) * por_pagina
-        fin = inicio + por_pagina
-        trabajadores = queryset[inicio:fin]
+        # Soporte a ?activo=true|false  (sin parámetro → todos)
+        activo_param = request.query_params.get('activo', '').lower()
+        if activo_param == 'true':
+            qs = Trabajador.objects.filter(activo=True)
+        elif activo_param == 'false':
+            qs = Trabajador.objects.filter(activo=False)
+        else:
+            qs = Trabajador.objects.all()
+
+        trabajadores = qs.order_by('apellido_paterno')
         serializer = TrabajadorSerializer(trabajadores, many=True)
-        return Response({
-            'total': total,
-            'pagina': pagina,
-            'total_paginas': (total + por_pagina - 1) // por_pagina,
-            'trabajadores': serializer.data
-        }, status=status.HTTP_200_OK)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     def post(self, request):
         serializer = TrabajadorCrearSerializer(data=request.data)
@@ -53,7 +39,7 @@ class TrabajadorListarCrearView(APIView):
                 serializer.errors,
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
+
         trabajador = serializer.save()
         try:
             rol = Rol.objects.get(nombre='TRABAJADOR')
@@ -68,7 +54,7 @@ class TrabajadorListarCrearView(APIView):
             pass
         except Exception as e:
             print(f'Error creando usuario automático: {e}')
-            
+
         registrar_auditoria(
             usuario=request.user,
             accion='CREAR_TRABAJADOR',
@@ -152,45 +138,35 @@ class TrabajadorDetalleView(APIView):
                 {'error': 'Trabajador no encontrado'},
                 status=status.HTTP_404_NOT_FOUND
             )
-        
-        from django.utils import timezone
-        hoy = timezone.now().date()
-        # Verificar condiciones para eliminar
-        puede_eliminar = False
-        razon = ''
-        if not trabajador.activo:
-            puede_eliminar = True
-            razon = 'inactivo'
-        elif trabajador.fecha_fin_laboral and trabajador.fecha_fin_laboral <= hoy:
-            puede_eliminar = True
-            razon = 'contrato finalizado'
-        if not puede_eliminar:
+
+        forzar = request.data.get('forzar', False)
+        if trabajador.marcaciones.exists() and not forzar:
             return Response(
-            {
-                'error': 'Solo se puede eliminar un trabajador si está inactivo o su contrato ha finalizado.',
-                'puede_eliminar': False
-            },
-            status=status.HTTP_400_BAD_REQUEST
-        )
+                {'error': 'El trabajador tiene marcaciones registradas.', 'tiene_marcaciones': True},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         nombre_completo = f'{trabajador.nombres} {trabajador.apellido_paterno}'
         dni = trabajador.dni
-        # Solo eliminar usuario — mantener marcaciones y auditoría
+
         try:
+            from apps.marcaciones.models import Marcacion
             from apps.auditoria.models import Auditoria
+
             usuario = Usuario.objects.get(trabajador=trabajador)
-            # Desvincular auditoría del usuario antes de eliminar
-            Auditoria.objects.filter(usuario=usuario).update(usuario=None)
+            Auditoria.objects.filter(usuario=usuario).delete()
+            Marcacion.objects.filter(trabajador=trabajador).delete()
             usuario.delete()
         except Usuario.DoesNotExist:
-            pass
-
-        trabajador.delete()
-        registrar_auditoria(
-            usuario=request.user,
-            accion='ELIMINAR_TRABAJADOR',
-            descripcion=f'Trabajador eliminado ({razon}): {nombre_completo} DNI: {dni}',
-            ip=request.META.get('REMOTE_ADDR', '0.0.0.0')
-        )
+            from apps.marcaciones.models import Marcacion
+            Marcacion.objects.filter(trabajador=trabajador).delete()
+            trabajador.delete()
+            registrar_auditoria(
+                usuario=request.user,
+                accion='ELIMINAR_TRABAJADOR',
+                descripcion=f'Trabajador eliminado: {nombre_completo} DNI: {dni}',
+                ip=request.META.get('REMOTE_ADDR', '0.0.0.0')
+            )
         return Response(
             {'mensaje': f'Trabajador {nombre_completo} eliminado correctamente'},
             status=status.HTTP_200_OK
@@ -228,8 +204,8 @@ class ActivarDesactivarTrabajadorView(APIView):
             },
             status=status.HTTP_200_OK
         )
-    
-#para mi foto de la base de datos
+
+
 class SubirFotoTrabajadorView(APIView):
     permission_classes = [EsAdmin]
 

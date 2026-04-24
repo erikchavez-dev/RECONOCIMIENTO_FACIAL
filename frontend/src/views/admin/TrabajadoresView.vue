@@ -1,14 +1,15 @@
 <template>
   <AdminLayout titulo="Trabajadores">
 
-    <!-- BUSCADOR -->
-   <div class="buscador">
-      <input v-model="buscar" @input="buscarTrabajadores" type="text" placeholder="Buscar por DNI, nombre o apellido..."
-        class="input-buscar" />
-    </div>
-
     <div class="toolbar">
       <h3>Gestión de Trabajadores</h3>
+      <div class="buscador">
+        <div class="buscador-input">
+          <img :src="iconoLupa" class="icono-buscar" alt="Buscar" />
+          <input v-model="buscar" @input="buscarTrabajadores" type="text"
+          placeholder="Buscar por DNI, nombre o apellido..." class="input-buscar" />
+        </div>
+      </div>
       <button @click="abrirModalCrear" class="btn-nuevo">+ Nuevo Trabajador</button>
     </div>
 
@@ -28,20 +29,17 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="t in trabajadores" :key="t.id">
+          <tr v-for="t in trabajadoresPaginados" :key="t.id">
             <td>
-              <img
-                :src="t.foto_url ? `${apiUrl}${t.foto_url}` : '/sin-foto.png'"
-                class="foto-trabajador"
-                alt="Foto"
-              />
+              <img :src="t.foto_url ? `http://127.0.0.1:8000${t.foto_url}` : '/sin-foto.png'" class="foto-trabajador"
+                alt="Foto" />
             </td>
-            <td>{{ t.apellido_paterno }} {{ t.apellido_materno  }} {{t.nombres }}</td>
+            <td>{{ t.apellido_paterno }} {{ t.apellido_materno }} {{ t.nombres }}</td>
             <td>{{ t.dni }}</td>
             <td>{{ t.cargo }}</td>
             <td>
-              <span :class="['badge', t.activo ? 'badge-activo' : 'badge-inactivo']">
-                {{ t.activo ? 'Activo' : 'Inactivo' }}
+              <span :class="['badge', estadoBadgeClass(t)]">
+                {{ estadoBadgeTexto(t) }}
               </span>
             </td>
             <td>
@@ -52,15 +50,14 @@
             <td class="acciones">
               <!-- BOTÓN EDITAR -->
               <button @click="abrirModalEditar(t)" class="btn-accion" title="Editar">
-                <img :src="iconoEditar" alt="Editar" width="18" height="18" />
+                <img :src="iconoEditar" alt="Editar" width="22" height="22" />
               </button>
 
-              <!-- INTERRUPTOR DE ACTIVACIÓN -->
-              <label class="switch-button">
-                <input type="checkbox" :checked="t.activo" @change="toggleActivo(t)">
-                <span class="slider-round"></span>
+              <!-- INTERRUPTOR: deshabilitado si contrato vencido -->
+              <label class="switch-button" :title="contratoVencido(t) ? 'Contrato vencido — no se puede activar' : ''">
+                <input type="checkbox" :checked="t.activo" :disabled="contratoVencido(t)" @change="toggleActivo(t)">
+                <span class="slider-round" :class="{ 'slider-disabled': contratoVencido(t) }"></span>
               </label>
-
 
               <!-- BOTÓN ELIMINAR -->
               <button @click="eliminar(t)" class="btn-accion delete" title="Eliminar">
@@ -72,18 +69,28 @@
         </tbody>
       </table>
     </div>
-
-  <!-- PAGINACIÓN -->
     <div class="paginacion" v-if="totalPaginas > 1">
-      <button @click="cambiarPagina(paginaActual - 1)" :disabled="paginaActual === 1" class="btn-pagina">←
-        Anterior</button>
+      <button @click="paginaActual = 1" :disabled="paginaActual === 1" class="btn-pagina btn-extremo">«</button>
 
-      <span class="pagina-info">
-        Página {{ paginaActual }} de {{ totalPaginas }} ({{ total }} registros)
-      </span>
+      <button @click="paginaActual--" :disabled="paginaActual === 1" class="btn-pagina">
+        ‹ Anterior
+      </button>
 
-      <button @click="cambiarPagina(paginaActual + 1)" :disabled="paginaActual === totalPaginas"
-        class="btn-pagina">Siguiente →</button>
+      <div class="paginas-numeros">
+        <button v-for="p in paginasVisibles" :key="p" @click="paginaActual = p"
+          :class="['btn-num', p === paginaActual ? 'activo' : '']">
+          {{ p }}
+        </button>
+      </div>
+
+      <button @click="paginaActual++" :disabled="paginaActual === totalPaginas" class="btn-pagina">
+        Siguiente ›
+      </button>
+
+      <button @click="paginaActual = totalPaginas" :disabled="paginaActual === totalPaginas"
+        class="btn-pagina btn-extremo">
+        »
+      </button>
     </div>
 
     <!-- MODAL CREAR/EDITAR -->
@@ -112,7 +119,7 @@
             </div>
             <div class="campo">
               <label>Teléfono</label>
-              <input v-model="form.telefono" type="text" placeholder="Teléfono" />
+              <input v-model="form.telefono" type="text" maxlength="9" placeholder="Teléfono" />
             </div>
             <div class="campo">
               <label>Cargo</label>
@@ -124,7 +131,7 @@
             </div>
             <div class="campo">
               <label>Fecha fin laboral</label>
-              <input v-model="form.fecha_fin_laboral" type="date"/>
+              <input v-model="form.fecha_fin_laboral" type="date" />
             </div>
             <div class="campo" v-if="!modoEdicion">
               <label>Rol</label>
@@ -153,16 +160,11 @@
 
           <!-- OPCIONES -->
           <div class="opciones-foto">
-            <button
-              @click="modoFoto = 'camara'"
-              :class="['btn-opcion', modoFoto === 'camara' ? 'activo' : '']">
-            Usar cámara
+            <button @click="modoFoto = 'camara'" :class="['btn-opcion', modoFoto === 'camara' ? 'activo' : '']">
+              Usar cámara
             </button>
-            <button
-              @click="modoFoto = 'archivo'"
-              :class="['btn-opcion', modoFoto === 'archivo' ? 'activo' : '']"
-            >
-            Cargar imágenes
+            <button @click="modoFoto = 'archivo'" :class="['btn-opcion', modoFoto === 'archivo' ? 'activo' : '']">
+              Cargar imágenes
             </button>
           </div>
 
@@ -179,16 +181,10 @@
 
           <!-- CARGAR ARCHIVOS -->
           <div v-if="modoFoto === 'archivo'" class="archivo-section">
-            <input
-              type="file"
-              accept="image/*"
-              multiple
-              @change="cargarArchivos"
-              ref="inputArchivo"
-              style="display:none"
-            />
+            <input type="file" accept="image/*" multiple @change="cargarArchivos" ref="inputArchivo"
+              style="display:none" />
             <button @click="$refs.inputArchivo.click()" class="btn-cargar">
-            Seleccionar 3 imágenes
+              Seleccionar 3 imágenes
             </button>
             <p class="hint">Seleccione exactamente 3 imágenes</p>
           </div>
@@ -207,11 +203,7 @@
 
           <div class="modal-acciones">
             <button @click="paso = 1" class="btn-cancelar">← Volver</button>
-            <button
-              @click="guardarConFotos"
-              :disabled="fotosCapturadas.length !== 3 || procesando"
-              class="btn-guardar"
-            >
+            <button @click="guardarConFotos" :disabled="fotosCapturadas.length !== 3 || procesando" class="btn-guardar">
               {{ procesando ? 'Procesando...' : 'Guardar trabajador' }}
             </button>
           </div>
@@ -224,15 +216,14 @@
 </template>
 
 <script setup>
-import iconoEditar from '@/assets/icon-lapicito.svg'
+import iconoEditar from '@/assets/icon-lapiz.svg'
 import iconBasura from '@/assets/icon-basura.svg'
+import iconoLupa from '@/assets/lupa-buscador.svg'
 
-import { ref, onMounted, watch, nextTick } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import AdminLayout from '@/components/AdminLayout.vue'
 import api from '@/services/api'
 
-
-const apiUrl = import.meta.env.VITE_API_URL
 const trabajadores = ref([])
 const cargando = ref(true)
 const mostrarModal = ref(false)
@@ -248,20 +239,19 @@ const videoRef = ref(null)
 const canvasRef = ref(null)
 const inputArchivo = ref(null)
 let stream = null
-
-// Paginación y búsqueda
 const buscar = ref('')
+const trabajadoresOriginal = ref([])
 const paginaActual = ref(1)
-const totalPaginas = ref(1)
-const total = ref(0)
-let timeoutBuscar = null
+const porPagina = 6
+
 
 const form = ref({
   nombres: '', apellido_paterno: '', apellido_materno: '',
   dni: '', telefono: '', cargo: '', fecha_inicio_laboral: '',
-  fecha_fin_laboral: '',
   rol: 'TRABAJADOR'
 })
+
+
 
 onMounted(async () => {
   await cargarTrabajadores()
@@ -270,15 +260,9 @@ onMounted(async () => {
 async function cargarTrabajadores() {
   cargando.value = true
   try {
-    const params = new URLSearchParams({
-      pagina: paginaActual.value,
-    })
-    if (buscar.value) params.append('buscar', buscar.value)
-
-    const response = await api.get(`/api/trabajadores/?${params}`)
-    trabajadores.value = response.data.trabajadores
-    total.value = response.data.total
-    totalPaginas.value = response.data.total_paginas
+    const response = await api.get('/api/trabajadores/')
+    trabajadores.value = response.data
+    trabajadoresOriginal.value = response.data
   } catch (e) {
     console.error('Error:', e)
   } finally {
@@ -287,19 +271,46 @@ async function cargarTrabajadores() {
 }
 
 function buscarTrabajadores() {
-  // Esperar 400ms después de que el usuario deje de escribir
-  clearTimeout(timeoutBuscar)
-  timeoutBuscar = setTimeout(() => {
-    paginaActual.value = 1
-    cargarTrabajadores()
-  }, 400)
+  paginaActual.value = 1
+  const texto = buscar.value.toLowerCase()
+
+  trabajadores.value = trabajadoresOriginal.value.filter(t =>
+    t.dni.includes(texto) ||
+    t.nombres.toLowerCase().includes(texto) ||
+    t.apellido_paterno.toLowerCase().includes(texto) ||
+    t.apellido_materno.toLowerCase().includes(texto)
+  )
 }
 
-function cambiarPagina(pagina) {
-  if (pagina < 1 || pagina > totalPaginas.value) return
-  paginaActual.value = pagina
-  cargarTrabajadores()
-}
+const trabajadoresPaginados = computed(() => {
+  const inicio = (paginaActual.value - 1) * porPagina
+  const fin = inicio + porPagina
+  return trabajadores.value.slice(inicio, fin)
+})
+
+const totalPaginas = computed(() => {
+  return Math.ceil(trabajadores.value.length / porPagina)
+})
+
+const paginasVisibles = computed(() => {
+  const total = totalPaginas.value
+  const actual = paginaActual.value
+
+  let inicio = actual
+  let fin = actual + 2
+
+  if (fin > total) {
+    fin = total
+    inicio = Math.max(1, total - 2)
+  }
+
+  const paginas = []
+  for (let i = inicio; i <= fin; i++) {
+    paginas.push(i)
+  }
+
+  return paginas
+})
 
 function abrirModalCrear() {
   modoEdicion.value = false
@@ -327,6 +338,7 @@ function abrirModalEditar(t) {
     cargo: t.cargo,
     fecha_inicio_laboral: t.fecha_inicio_laboral?.split('T')[0] || '',
     fecha_fin_laboral: t.fecha_fin_laboral?.split('T')[0] || '',
+
     rol: 'TRABAJADOR'
   }
   errorModal.value = ''
@@ -348,16 +360,15 @@ async function siguientePaso() {
   }
   errorModal.value = ''
   paso.value = 2
-
+  // Iniciar cámara si está en modo cámara
   if (modoFoto.value === 'camara') {
-    await nextTick()
     await iniciarCamara()
   }
 }
 
+// Observar cambio de modo foto
 watch(modoFoto, async (nuevo) => {
   if (nuevo === 'camara') {
-    await nextTick
     await iniciarCamara()
   } else {
     detenerCamara()
@@ -425,7 +436,8 @@ async function guardar() {
     cerrarModal()
     await cargarTrabajadores()
   } catch (e) {
-    errorModal.value = e.response?.data?.error || JSON.stringify(e.response?.data) || 'Error al guardar'
+    console.log('Error detallado:', e.response?.data)
+    errorModal.value = e.response?.data?.error || JSON.stringify(e.response?.data) || 'Error al procesar las fotos'
   } finally {
     guardando.value = false
   }
@@ -440,6 +452,7 @@ async function guardarConFotos() {
   procesando.value = true
 
   try {
+    // 1. Crear trabajador
     const response = await api.post('/api/trabajadores/', {
       nombres: form.value.nombres,
       apellido_paterno: form.value.apellido_paterno,
@@ -448,24 +461,27 @@ async function guardarConFotos() {
       telefono: form.value.telefono,
       cargo: form.value.cargo,
       fecha_inicio_laboral: form.value.fecha_inicio_laboral,
+      fecha_fin_laboral: form.value.fecha_fin_laboral,
     })
     const trabajador = response.data
 
+    // 2. Subir foto de perfil (primera foto)
     await api.post(`/api/trabajadores/${trabajador.id}/foto/`, {
       imagen: fotosCapturadas.value[0]
     })
 
+    // 3. Registrar embedding (3 fotos)
     await api.post('/api/reconocimiento/registrar-embedding/', {
       trabajador_id: trabajador.id,
       imagenes: fotosCapturadas.value
     })
 
+    // 4. Si el rol es ADMIN, actualizar el usuario
     if (form.value.rol === 'ADMIN') {
       const usuarios = await api.get('/api/auth/listar/')
-      const usuario = usuarios.data.usuarios.find(u => u.dni === trabajador.dni)
-      if (usuario) {
-        await api.patch(`/api/auth/cambiar-rol/${usuario.id}/`, { rol: 'ADMIN' })
-      }
+      const usuario = usuarios.data.usuarios.find(u => u.trabajador_id === trabajador.id || u.dni === trabajador.dni)
+      // El rol se asigna automáticamente como TRABAJADOR al crear
+      // Para cambiar a ADMIN necesitaríamos un endpoint adicional
     }
 
     detenerCamara()
@@ -473,14 +489,37 @@ async function guardarConFotos() {
     await cargarTrabajadores()
 
   } catch (e) {
-    console.log('Error detallado:', e.response?.data)
     errorModal.value = e.response?.data?.error || 'Error al procesar las fotos'
   } finally {
     procesando.value = false
   }
 }
 
+// Verifica si el contrato del trabajador ya venció
+function contratoVencido(t) {
+  if (!t.fecha_fin_laboral) return false
+  const hoy = new Date()
+  hoy.setHours(0, 0, 0, 0)
+  const fin = new Date(t.fecha_fin_laboral + 'T00:00:00')
+  return fin < hoy
+}
+
+// Clase CSS del badge de estado
+function estadoBadgeClass(t) {
+  if (contratoVencido(t)) return 'badge-vencido'
+  if (t.activo_efectivo) return 'badge-activo'
+  return 'badge-inactivo'
+}
+
+// Texto del badge de estado
+function estadoBadgeTexto(t) {
+  if (contratoVencido(t)) return 'Vencido'
+  if (t.activo_efectivo) return 'Activo'
+  return 'Inactivo'
+}
+
 async function toggleActivo(t) {
+  if (contratoVencido(t)) return
   try {
     await api.patch(`/api/trabajadores/${t.id}/activar-desactivar/`)
     await cargarTrabajadores()
@@ -491,18 +530,42 @@ async function toggleActivo(t) {
 
 async function eliminar(t) {
   if (!confirm(`¿Eliminar a ${t.nombres} ${t.apellido_paterno}?`)) return
+  
   try {
     await api.delete(`/api/trabajadores/${t.id}/`)
     await cargarTrabajadores()
   } catch (e) {
     const data = e.response?.data
-    alert(data?.error || 'Error al eliminar')
+    
+    // Si tiene marcaciones preguntar si forzar
+    if (data?.tiene_marcaciones) {
+      const forzar = confirm(
+        `El trabajador ${t.nombres} ${t.apellido_paterno} tiene marcaciones registradas.\n\n` +
+        `¿Desea eliminarlo de todas formas junto con todas sus marcaciones?`
+      )
+      if (!forzar) return
+
+      try {
+        await api.delete(`/api/trabajadores/${t.id}/`, { data: { forzar: true } })
+        await cargarTrabajadores()
+      } catch (e2) {
+        alert(e2.response?.data?.error || 'Error al eliminar')
+      }
+    } else {
+      alert(data?.error || 'Error al eliminar')
+    }
   }
 }
 </script>
 
-
 <style scoped>
+/* para el titulo */
+.toolbar h3 {
+  font-size: 1.45em;
+  font-weight: 700;
+  color: #1a3a6b;
+}
+
 .toolbar {
   display: flex;
   justify-content: space-between;
@@ -510,19 +573,24 @@ async function eliminar(t) {
   margin-bottom: 20px;
 }
 
-.toolbar h3 { font-size: 1.1rem; color: #1a3a6b; }
-
 .btn-nuevo {
-  background: #1a3a6b;
-  color: white;
+  background: #08c22a;
+  color: rgb(255, 255, 255);
+  font-size: 1.01em;
+  font-weight: 600;
   border: none;
-  padding: 10px 20px;
+  padding: 11px 29px;
   border-radius: 6px;
   cursor: pointer;
-  font-size: 0.9rem;
 }
 
-.btn-nuevo:hover { background: #142d54; }
+.btn-nuevo:hover {
+  background: #4a7ac2;
+  color: #fff;
+}
+.btn-nuevo disabled {
+  opacity: 0.6;
+}
 
 .tabla-container {
   background: white;
@@ -566,6 +634,7 @@ async function eliminar(t) {
 
 .badge-activo { background: #dcfce7; color: #16a34a; }
 .badge-inactivo { background: #fee2e2; color: #dc2626; }
+.badge-vencido { background: #fef3c7; color: #b45309; }
 .badge-si { background: #dbeafe; color: #1d4ed8; }
 .badge-no { background: #f3f4f6; color: #6b7280; }
 
@@ -872,61 +941,207 @@ input:focus + .slider-round {
   box-shadow: 0 0 1px #ff7300;
 }
 
+/* Switch deshabilitado cuando contrato vencido */
+.slider-round.slider-disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .icono-camara {
   width: 26px;
   height: 26px;
   margin-right: 6px;
 }
 
-
-/* BUSCADOR */
+/* buscador */
 .buscador {
-  margin-bottom: 16px;
+  margin-left: 230px;
+  display: flex;
+  align-items: flex-end;
 }
 
+/* WRAPPER */
+.buscador-input {
+  position: relative;
+  width: 100%;
+  max-width: 250px;
+}
+
+/* INPUT */
 .input-buscar {
   width: 100%;
-  max-width: 400px;
-  padding: 10px 14px;
-  border: 1px solid #ddd;
+  padding: 10px 14px 10px 40px;
+  border: 1px solid #ecedee;
   border-radius: 8px;
-  font-size: 0.9rem;
+  font-size: 1.04em;
+  font-weight: 500;
+  background: #fff;
+  color: #ec0404;
   outline: none;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+}
+
+.input-buscar:hover {
+  border-color: #cbd5e1;
 }
 
 .input-buscar:focus {
   border-color: #1a3a6b;
 }
 
-/* PAGINACIÓN */
+/* ICONO IMG */
+.icono-buscar {
+  position: absolute;
+  top: 50%;
+  left: 12px;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* PLACEHOLDER */
+.input-buscar::placeholder {
+  color: #9ca3af;
+  font-size: 0.9em;
+}
+
+/* paginacion */
 .paginacion {
   display: flex;
-  align-items: center;
   justify-content: center;
-  gap: 16px;
-  padding: 20px;
-  background: white;
-  border-top: 1px solid #f0f0f0;
+  align-items: center;
+  gap: 14px;
+  padding: 15px;
+}
+.btn-num.activo {
+  background: #00f483;
+  font-weight: bold;
+}
+.btn-num:hover {
+  background: #01c5ab;
 }
 
-.btn-pagina {
-  padding: 8px 16px;
-  background: #1a3a6b;
+.paginacion button {
+  background: #026d5f;
+  flex-shrink: 0;
   color: white;
   border: none;
+  padding: 6px 12px;
   border-radius: 6px;
   cursor: pointer;
-  font-size: 0.88rem;
 }
-
-.btn-pagina:disabled {
-  background: #cbd5e1;
+.btn-pagina:hover:not(:disabled) {
+  background: #01c5ab;
+}
+.paginacion button:disabled {
+  opacity: 0.5;
   cursor: not-allowed;
 }
+  .paginas-numeros {
+    display: flex;
+    gap: 6px;
+  }
 
-.pagina-info {
-  font-size: 0.88rem;
-  color: #555;
+
+/* para el responsive */
+@media (max-width: 768px) {
+
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .toolbar h3 {
+    font-size: 1.5em;
+  }
+
+  .buscador {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .buscador-input {
+    max-width: 100%;
+  }
+
+  .btn-nuevo {
+    width: 100%;
+    text-align: center;
+    padding: 10px;
+  }
+    .tabla-container {
+    overflow-x: auto;
+  }
+
+  .tabla {
+    min-width: 700px;
+  }
+    .acciones {
+    gap: 3px;
+  }
+
+  .btn-accion img {
+    width: 16px;
+    height: 16px;
+  }
+
+  .switch-button {
+    transform: scale(0.85);
+  }
+    .modal {
+    padding: 20px;
+    max-width: 100%;
+    border-radius: 10px;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr; 
+  }
+
+  .modal-acciones {
+    flex-direction: column;
+  }
+
+  .btn-cancelar,
+  .btn-guardar {
+    width: 100%;
+  }
+    .foto-preview-item img {
+    width: 70px;
+    height: 70px;
+  }
+
+  .video {
+    max-width: 100%;
+  }
+  .paginacion {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+
+    flex-wrap: nowrap;   
+    overflow-x: auto;     
+    padding: 10px;
+  }
+  .paginas-numeros {
+    display: flex;
+    gap: 6px;
+  }
+  .paginacion button {
+    flex-shrink: 0; 
+    padding: 5px 8px;
+    font-size: 0.8rem;
+  }
+
+  .btn-extremo {
+    display: none;
+  }
 }
+
 
 </style>

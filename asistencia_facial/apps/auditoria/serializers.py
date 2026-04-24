@@ -24,4 +24,10 @@ class AuditoriaSerializer(serializers.ModelSerializer):
         ]
 
     def get_usuario_nombre(self, obj):
-        return f'{obj.usuario.trabajador.nombres} {obj.usuario.trabajador.apellido_paterno}'
+        if not obj.usuario:
+            return 'Usuario eliminado'
+        try:
+            t = obj.usuario.trabajador
+            return f'{t.nombres} {t.apellido_paterno}'
+        except Exception:
+            return obj.usuario.username

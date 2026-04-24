@@ -10,8 +10,8 @@ from apps.trabajadores.models import Trabajador
 from apps.auditoria.services import registrar_auditoria
 from django.contrib.auth.hashers import make_password
 from apps.usuarios.permissions import EsAdmin
-from django.db import models as db_models
-
+from math import ceil
+from django.db.models import Q
 
 def get_tokens_for_user(usuario):
     refresh = RefreshToken()
@@ -224,32 +224,32 @@ class ResetearIntentosFacialesView(APIView):
     
 class ListarUsuariosView(APIView):
     permission_classes = [EsAdmin]
-    
+
     def get(self, request):
-        queryset = Usuario.objects.select_related(
+        buscar = request.GET.get('buscar', '')
+        pagina = int(request.GET.get('pagina', 1))
+        limite = int(request.GET.get('limite', 6))
+
+        usuarios = Usuario.objects.select_related(
             'trabajador', 'rol'
         ).all().order_by('trabajador__apellido_paterno')
-        
-        buscar = request.query_params.get('buscar', '')
-        
-        if buscar:
-            queryset = queryset.filter(
-                db_models.Q(username__icontains=buscar) |
-                db_models.Q(trabajador__nombres__icontains=buscar) |
-                db_models.Q(trabajador__apellido_paterno__icontains=buscar)
-            )
-            
-        pagina = int(request.query_params.get('pagina', 1))
-        por_pagina = 10
-        total = queryset.count()
-        inicio = (pagina - 1) * por_pagina
-        fin = inicio + por_pagina
 
-        usuarios_paginados = queryset[inicio:fin].select_related('trabajador', 'rol')
+        if buscar:
+            usuarios = usuarios.filter(
+                Q(trabajador__dni__icontains=buscar) |
+                Q(trabajador__nombres__icontains=buscar) |
+                Q(trabajador__apellido_paterno__icontains=buscar)
+            )
+
+        total = usuarios.count()
+
+        inicio = (pagina - 1) * limite
+        fin = inicio + limite
+
+        usuarios = usuarios.order_by('trabajador__apellido_paterno')[inicio:fin]
 
         data = []
-        for u in usuarios_paginados:
-            u.refresh_from_db()
+        for u in usuarios:
             data.append({
                 'id': u.id,
                 'username': u.username,
@@ -261,12 +261,13 @@ class ListarUsuariosView(APIView):
                 'bloqueado': u.bloqueado,
                 'intentos_fallidos': u.intentos_fallidos,
                 'debe_cambiar_password': u.debe_cambiar_password,
+                'ultimo_login': u.ultimo_login,
             })
-            
+
         return Response({
             'total': total,
             'pagina': pagina,
-            'total_paginas': (total + por_pagina - 1) // por_pagina,
+            'total_paginas': ceil(total / limite),
             'usuarios': data
         }, status=status.HTTP_200_OK)
     

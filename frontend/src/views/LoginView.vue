@@ -15,7 +15,7 @@
       <div class="formulario">
 
         <div class="campo">
-          <label>Usuario (DNI)</label>
+          <label>Usuario</label>
           <div class="input-wrapper">
             <img :src="iconoUsuario" alt="usuario" class="icono-input" />
             <input
@@ -23,6 +23,8 @@
             type="text"
             placeholder="Ingrese su DNI"
             maxlength="8"
+            autocomplete="username"
+            name="username"
             @keyup.enter="handleLogin"
             />
           </div>
@@ -35,6 +37,8 @@
               v-model="password"
               :type="mostrarPassword ? 'text' : 'password'"
               placeholder="Ingrese su contraseña"
+              autocomplete="current-password"
+              name="password"
               @keyup.enter="handleLogin"
             />
             <button
@@ -163,8 +167,8 @@ h2 {
 }
 
 .subtitulo {
-  font-size: 0.9rem;
-  color: #3b3b3b;
+  font-size: 0.95em;
+  color: #161616;
   margin-bottom: 24px;
 }
 
@@ -209,7 +213,7 @@ h2 {
 
 .password-wrapper input {
   flex: 1;
-  padding-right: 44px; /* evita que el texto quede debajo del ícono */
+  padding-right: 44px; 
 }
 
 .toggle-password {
@@ -313,6 +317,49 @@ h2 {
   width: 18px;
   height: 18px;
   pointer-events: none; /* no interfiere con el input */
+}
+
+
+
+@media (max-width: 768px) {
+  .login-card {
+  backdrop-filter: blur(70px);
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  z-index: 10;
+  padding: 18px 20px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  }
+  .login-image {
+  background-image: url('@/assets/login.webp');
+  animation: gradient 15s ease infinite;
+  overflow: hidden;
+  background-size: 110% 110%;
+  background-position: center;
+  background-repeat: no-repeat;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  }
+  .subtitulo {
+  font-size: 0.9em;
+  color: #161616;
+  font-weight: 600;
+  margin-bottom: 24px;
+  }
+  .campo label {
+  display: block;
+  font-size: 1.2em;
+  font-weight: 600;
+  color: #000000;
+  margin-bottom: 0px;
+  }
+
+
+
 }
 
 </style>

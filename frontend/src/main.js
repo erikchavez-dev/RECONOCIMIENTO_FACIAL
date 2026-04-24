@@ -7,10 +7,9 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
-
+import './assets/tema.css'
+ 
 const app = createApp(App)
-
-app.use(createPinia())  // Estado global
-app.use(router)         // Navegación
-
+app.use(createPinia())
+app.use(router)
 app.mount('#app')
