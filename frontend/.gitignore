@@ -9,6 +9,7 @@ lerna-debug.log*
 
 node_modules
 .DS_Store
+Thumbs.db
 dist
 dist-ssr
 coverage
@@ -39,6 +40,7 @@ __screenshots__/
 *.timestamp-*-*.mjs
 
 venv/
+
 **/__pycache__/
 *.pyc
 .env

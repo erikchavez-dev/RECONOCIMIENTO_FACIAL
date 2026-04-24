@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    
 
     
     #terceros
@@ -158,8 +159,6 @@ CORS_ALLOWED_ORIGINS = [
 ]
 #para pruebas en mi red local
 #CORS_ALLOW_ALL_ORIGINS = True
-
-
 
 
 

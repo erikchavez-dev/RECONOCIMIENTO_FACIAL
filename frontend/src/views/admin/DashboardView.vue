@@ -111,10 +111,9 @@
               >{{ p.label }}</button>
             </div>
           </div>
-         <div class="chart-legend">
+          <div class="chart-legend">
             <span class="leg-item"><span class="leg-dot" style="background:#10b981"></span>Puntuales</span>
             <span class="leg-item"><span class="leg-dot" style="background:#f59e0b"></span>Tardanzas</span>
-            <span class="leg-item"><span class="leg-dot" style="background:#ef4444"></span>Faltas</span>
           </div>
           <div class="chart-wrap" style="position:relative; height:200px;">
             <div v-if="cargandoGrafico" class="chart-loading">Cargando datos...</div>
@@ -340,77 +339,36 @@ function rangosAnio() {
 }
 
 // ── Construir gráfico de BARRAS AGRUPADAS ─────────────────
-
 async function construirBarras(periodo) {
   if (!barCanvas.value) return
   cargandoGrafico.value = true
- 
+
   let rangos = []
-  if (periodo === 'semanal')       rangos = rangosSemana()
-  else if (periodo === 'mensual')  rangos = rangosMes()
-  else                             rangos = rangosAnio()
- 
+  if (periodo === 'semanal') rangos = rangosSemana()
+  else if (periodo === 'mensual') rangos = rangosMes()
+  else rangos = rangosAnio()
+
   const labels    = []
   const puntuales = []
   const tardanzas = []
-  const faltas    = []
- 
-  // Total de trabajadores activos para calcular faltas
-  const totalActivos = stats.value.trabajadores?.total_activos || 0
- 
+
   for (const rango of rangos) {
     labels.push(rango.label)
     try {
-      const r   = await api.get('/api/marcaciones/reporte/', {
+      const r = await api.get('/api/marcaciones/reporte/', {
         params: { fecha_inicio: rango.inicio, fecha_fin: rango.fin }
       })
       const est = r.data.estadisticas || {}
-      const p   = est.puntuales || 0
-      const t   = est.tardanzas || 0
- 
-      puntuales.push(p)
-      tardanzas.push(t)
- 
-      // Faltas = trabajadores que NO marcaron entrada en ese rango
-      // Para semanal (un día): totalActivos - entradas del día
-      // Para mensual/anual (varios días): no podemos saber exactamente sin
-      // un endpoint dedicado, así que usamos total_entradas como aproximación
-      // (entradas únicas distintas de trabajadores no disponibles directamente)
-      // → mostramos totalActivos - (p + t) como faltas del período
-      const entradas = est.total_entradas || 0
-      faltas.push(Math.max(0, totalActivos - entradas))
+      puntuales.push(est.puntuales  || 0)
+      tardanzas.push(est.tardanzas  || 0)
     } catch {
       puntuales.push(0)
       tardanzas.push(0)
-      faltas.push(0)
     }
   }
- 
+
   if (barChart) barChart.destroy()
- 
-  // Plugin inline que dibuja el número encima de cada barra
-  const datalabelsPlugin = {
-    id: 'barDatalabels',
-    afterDatasetsDraw(chart) {
-      const { ctx } = chart
-      chart.data.datasets.forEach((dataset, datasetIndex) => {
-        const meta = chart.getDatasetMeta(datasetIndex)
-        if (meta.hidden) return
-        meta.data.forEach((bar, index) => {
-          const valor = dataset.data[index]
-          if (!valor) return   // no dibujar 0
-          ctx.save()
-          ctx.fillStyle    = '#374151'
-          ctx.font         = 'bold 10px sans-serif'
-          ctx.textAlign    = 'center'
-          ctx.textBaseline = 'bottom'
-          ctx.fillText(String(valor), bar.x, bar.y - 2)
-          ctx.restore()
-        })
-      })
-    }
-  }
- 
+
   barChart = new Chart(barCanvas.value, {
     type: 'bar',
     data: {
@@ -423,7 +381,7 @@ async function construirBarras(periodo) {
           borderRadius: 5,
           borderSkipped: false,
           barPercentage: 0.7,
-          categoryPercentage: 0.55,
+          categoryPercentage: 0.6,
         },
         {
           label: 'Tardanzas',
@@ -432,50 +390,39 @@ async function construirBarras(periodo) {
           borderRadius: 5,
           borderSkipped: false,
           barPercentage: 0.7,
-          categoryPercentage: 0.55,
-        },
-        {
-          label: 'Faltas',
-          data: faltas,
-          backgroundColor: '#ef4444',
-          borderRadius: 5,
-          borderSkipped: false,
-          barPercentage: 0.7,
-          categoryPercentage: 0.55,
+          categoryPercentage: 0.6,
         },
       ]
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      layout: {
-        padding: { top: 18 }   // espacio para los números encima
-      },
       plugins: {
         legend: { display: false },
         tooltip: {
           mode: 'index',
           intersect: false,
+          callbacks: {
+            title: ctx => `${ctx[0].label}`,
+          }
         },
       },
       scales: {
         x: {
           ticks: { color: '#94a3b8', font: { size: 11 } },
-          grid:  { display: false },
+          grid: { display: false },
         },
         y: {
           beginAtZero: true,
           ticks: { color: '#94a3b8', font: { size: 11 }, stepSize: 1, precision: 0 },
-          grid:  { color: 'rgba(0,0,0,0.04)' },
+          grid: { color: 'rgba(0,0,0,0.04)' },
         }
       }
-    },
-    plugins: [datalabelsPlugin]   // plugin inline registrado aquí
+    }
   })
- 
+
   cargandoGrafico.value = false
 }
-
 
 // ── Gráfico circular con número y porcentaje ──────────────
 async function construirDona() {
@@ -541,6 +488,7 @@ async function construirDona() {
     },
     // Plugin personalizado que dibuja el número y porcentaje dentro de cada segmento
     plugins: [{
+      
       id: 'donaLabels',
       afterDraw(chart) {
         const { ctx, data } = chart
