@@ -77,7 +77,6 @@ class VerificarRostroView(APIView):
             imagen_base64 = request.data.get('imagen')
             dispositivo   = request.data.get('dispositivo', 'No especificado')
 
-            # Geolocalización
             latitud  = request.data.get('latitud')
             longitud = request.data.get('longitud')
 
@@ -113,7 +112,7 @@ class VerificarRostroView(APIView):
                     status=status.HTTP_403_FORBIDDEN
                 )
 
-            # ── IP ─────────────────────────────────────
+            # ── IP ──────────────────────────────────────────────────────
             ip = get_client_ip(request)
             print("IP detectada:", ip)
 
@@ -128,7 +127,7 @@ class VerificarRostroView(APIView):
                 )
                 return Response({'error': ip_error}, status=status.HTTP_403_FORBIDDEN)
 
-            # ── RECONOCIMIENTO ─────────────────────────
+            # ── RECONOCIMIENTO ──────────────────────────────────────────
             print("Generando embedding...")
             embedding_capturado, error = generar_embedding(imagen_base64)
 
@@ -143,7 +142,7 @@ class VerificarRostroView(APIView):
                 config.umbral_similitud
             )
 
-            # ── FALLÓ ──────────────────────────────────
+            # ── FALLÓ ───────────────────────────────────────────────────
             if not verificado:
                 usuario.intentos_fallidos += 1
 
@@ -164,7 +163,6 @@ class VerificarRostroView(APIView):
                     )
 
                 usuario.save()
-
                 restantes = config.max_intentos_faciales - usuario.intentos_fallidos
 
                 registrar_auditoria(
@@ -176,24 +174,26 @@ class VerificarRostroView(APIView):
 
                 return Response({
                     'error': f'El rostro no coincide. Intentos restantes: {restantes}',
-                    'similitud': round(similitud, 2),
+                    'similitud':          round(similitud, 2),
                     'intentos_restantes': restantes
                 }, status=status.HTTP_401_UNAUTHORIZED)
 
-            # ── ÉXITO ──────────────────────────────────
+            # ── ÉXITO FACIAL: registrar marcación ───────────────────────
             usuario.intentos_fallidos = 0
             usuario.save()
 
             print("Verificación exitosa")
 
             info_ip = obtener_info_ip(ip)
-            ciudad = info_ip.get('ciudad', '')
-            pais   = info_ip.get('pais', '')
+            ciudad      = info_ip.get('ciudad', '')
+            pais        = info_ip.get('pais', '')
             ip_info_str = f"{info_ip.get('org', '')} / {info_ip.get('isp', '')}".strip(' /')
 
             print("Registrando marcación...")
 
-            marcacion, error = registrar_marcacion(
+            # El service SIEMPRE devuelve (marcacion, mensaje).
+            # Solo falla si no hay configuración (marcacion=None).
+            marcacion, mensaje = registrar_marcacion(
                 trabajador, ip, dispositivo,
                 latitud=latitud,
                 longitud=longitud,
@@ -202,25 +202,38 @@ class VerificarRostroView(APIView):
                 ip_info=ip_info_str or None,
             )
 
-            if error:
-                print("Error marcación:", error)
-                return Response({'error': error}, status=status.HTTP_400_BAD_REQUEST)
+            if marcacion is None:
+                # Solo pasa si no hay config — error real
+                print("Error marcación: sin configuración")
+                return Response({'error': mensaje}, status=status.HTTP_400_BAD_REQUEST)
 
+            # ── Registrar auditoría ─────────────────────────────────────
             registrar_auditoria(
                 usuario=usuario,
                 accion='MARCACION_EXITOSA',
-                descripcion=f'Marcación {marcacion.tipo} - {ciudad}, {pais}',
+                descripcion=f'Marcación {marcacion.tipo} — {mensaje} — {ciudad}, {pais}',
                 ip=ip
             )
 
+            # ── Respuesta siempre exitosa al frontend ───────────────────
+            # va_a_asistencia determina si es "válida para asistencia" o solo historial
+            tipo_display = marcacion.tipo
+            if marcacion.tipo == 'ENTRADA_VALIDA':
+                tipo_display = 'ENTRADA'
+            elif marcacion.tipo == 'SALIDA_VALIDA':
+                tipo_display = 'SALIDA'
+
             return Response({
-                'mensaje': 'Verificación exitosa',
+                'mensaje': mensaje,
                 'similitud': similitud,
+                'va_a_asistencia': marcacion.va_a_asistencia,
                 'marcacion': {
-                    'id':     marcacion.id,
-                    'tipo':   marcacion.tipo,
-                    'estado': marcacion.estado,
-                    'fecha':  marcacion.fecha,
+                    'id':              marcacion.id,
+                    'tipo':            tipo_display,
+                    'tipo_real':       marcacion.tipo,
+                    'estado':          marcacion.estado,
+                    'fecha':           marcacion.fecha,
+                    'va_a_asistencia': marcacion.va_a_asistencia,
                 },
                 'ubicacion': {
                     'ip':     ip,
@@ -236,8 +249,8 @@ class VerificarRostroView(APIView):
 
             return Response(
                 {
-                    'error': 'Error interno del servidor',
-                    'detalle': str(e)  #esto te dirá EXACTAMENTE qué falla
+                    'error':   'Error interno del servidor',
+                    'detalle': str(e)
                 },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )

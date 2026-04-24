@@ -1,5 +1,5 @@
 <!-- ConfiguracionView.vue — Configuración del sistema -->
-<!-- Formulario con horarios, umbral facial, IPs y seguridad -->
+<!-- Formulario con horarios, umbral facial, IPs, tolerancia y seguridad -->
 
 <template>
   <AdminLayout titulo="Configuración">
@@ -13,7 +13,8 @@
         <h3>Horarios de Entrada</h3>
         <div class="horario-info">
           <span class="horario-tag">Puntual</span> si llega antes de la hora fin entrada.
-          <span class="horario-tag tardanza">Tardanza</span> si llega después.
+          <span class="horario-tag tardanza">Tardanza</span> si llega después pero dentro de la tolerancia.
+          <span class="horario-tag fuera">Fuera</span> si supera la tolerancia.
         </div>
         <div class="form-grid">
           <div class="campo">
@@ -50,6 +51,27 @@
             </div>
             <span class="hint-hora">24h: {{ form.hora_fin_entrada }}</span>
           </div>
+        </div>
+
+        <!-- TOLERANCIA — nuevo campo -->
+        <div class="campo tolerancia-campo">
+          <label>Tolerancia de tardanza (minutos)</label>
+          <div class="tolerancia-row">
+            <input
+              v-model.number="form.tolerancia_minutos"
+              type="number"
+              min="0"
+              max="120"
+              step="5"
+              class="input-tolerancia"
+            />
+            <span class="tolerancia-hint">
+              min. Hasta las
+              <strong>{{ limiteTolerancia }}</strong>
+              se acepta como tardanza.
+            </span>
+          </div>
+          <span class="hint">0 = sin tolerancia. Máx. 120 min.</span>
         </div>
       </div>
 
@@ -144,7 +166,7 @@
 
       <!-- BOTÓN GUARDAR -->
       <button @click="guardar" :disabled="guardando" class="btn-guardar">
-      {{ guardando ? 'Guardando...' : 'Guardar configuración' }}
+        {{ guardando ? 'Guardando...' : 'Guardar configuración' }}
       </button>
 
     </div>
@@ -153,7 +175,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch, reactive } from 'vue'
+import { ref, computed, onMounted, watch, reactive } from 'vue'
 import AdminLayout from '@/components/AdminLayout.vue'
 import api from '@/services/api'
 
@@ -163,24 +185,36 @@ const exito = ref('')
 const error = ref('')
 
 const form = ref({
-  hora_inicio_entrada: '',
-  hora_fin_entrada: '',
-  hora_inicio_salida: '',
-  hora_fin_salida: '',
-  umbral_similitud: 0.6,
-  ip_autorizada: '',
-  control_ip_activo: false,
-  max_intentos: 5,
-  max_intentos_faciales: 5
+  hora_inicio_entrada:  '',
+  hora_fin_entrada:     '',
+  hora_inicio_salida:   '',
+  hora_fin_salida:      '',
+  tolerancia_minutos:   30,
+  umbral_similitud:     0.6,
+  ip_autorizada:        '',
+  control_ip_activo:    false,
+  max_intentos:         5,
+  max_intentos_faciales: 5,
 })
 
 // Opciones para los selectores
 const horas12 = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'))
 const minutos = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'))
 
-// Estado reactivo de los selectores AM/PM
 const horasEntrada = reactive({ inicio_h: '07', inicio_m: '00', inicio_ampm: 'AM', fin_h: '08', fin_m: '00', fin_ampm: 'AM' })
 const horasSalida  = reactive({ inicio_h: '04', inicio_m: '00', inicio_ampm: 'PM', fin_h: '05', fin_m: '00', fin_ampm: 'PM' })
+
+// Calcula el límite de tardanza para mostrar al admin
+const limiteTolerancia = computed(() => {
+  if (!form.value.hora_fin_entrada) return '--'
+  const [h, m] = form.value.hora_fin_entrada.split(':').map(Number)
+  const totalMinutos = h * 60 + m + (form.value.tolerancia_minutos || 0)
+  const hh = Math.floor(totalMinutos / 60) % 24
+  const mm = totalMinutos % 60
+  const ampm = hh >= 12 ? 'PM' : 'AM'
+  const h12  = hh === 0 ? 12 : hh > 12 ? hh - 12 : hh
+  return `${String(h12).padStart(2,'0')}:${String(mm).padStart(2,'0')} ${ampm}`
+})
 
 // Convierte HH:MM (24h) a partes 12h
 function a12h(hora24) {
@@ -201,7 +235,6 @@ function a24h(h, m, ampm) {
   return `${String(hNum).padStart(2, '0')}:${m}`
 }
 
-// Cuando cambia cualquier selector → actualizar form (24h)
 watch(horasEntrada, () => {
   form.value.hora_inicio_entrada = a24h(horasEntrada.inicio_h, horasEntrada.inicio_m, horasEntrada.inicio_ampm)
   form.value.hora_fin_entrada    = a24h(horasEntrada.fin_h,    horasEntrada.fin_m,    horasEntrada.fin_ampm)
@@ -212,7 +245,6 @@ watch(horasSalida, () => {
   form.value.hora_fin_salida    = a24h(horasSalida.fin_h,    horasSalida.fin_m,    horasSalida.fin_ampm)
 }, { deep: true })
 
-// Inicializar selectores desde el valor 24h del backend
 function inicializarSelectores() {
   const ie = a12h(form.value.hora_inicio_entrada)
   horasEntrada.inicio_h    = ie.h
@@ -238,7 +270,10 @@ function inicializarSelectores() {
 onMounted(async () => {
   try {
     const response = await api.get('/api/configuracion/')
-    form.value = { ...response.data }
+    form.value = {
+      ...form.value,        // mantiene defaults
+      ...response.data,     // sobrescribe con valores del backend
+    }
     inicializarSelectores()
   } catch (e) {
     error.value = 'Error al cargar la configuración'
@@ -252,12 +287,12 @@ async function guardar() {
   error.value = ''
   guardando.value = true
   try {
-    // Enviar solo los campos que acepta el serializer
     const payload = {
       hora_inicio_entrada:   form.value.hora_inicio_entrada,
       hora_fin_entrada:      form.value.hora_fin_entrada,
       hora_inicio_salida:    form.value.hora_inicio_salida,
       hora_fin_salida:       form.value.hora_fin_salida,
+      tolerancia_minutos:    form.value.tolerancia_minutos,   // ← NUEVO
       umbral_similitud:      form.value.umbral_similitud,
       ip_autorizada:         form.value.ip_autorizada,
       control_ip_activo:     form.value.control_ip_activo,
@@ -337,6 +372,47 @@ async function guardar() {
 .hint {
   font-size: 0.75rem;
   color: #999;
+}
+
+/* TOLERANCIA */
+.tolerancia-campo {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.tolerancia-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.input-tolerancia {
+  width: 80px;
+  padding: 8px 10px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #1a3a6b;
+  text-align: center;
+}
+
+.input-tolerancia:focus {
+  outline: none;
+  border-color: #1a3a6b;
+}
+
+.tolerancia-hint {
+  font-size: 0.82rem;
+  color: #555;
+}
+
+.tolerancia-hint strong {
+  color: #ca8a04;
+  background: #fef9c3;
+  padding: 1px 6px;
+  border-radius: 4px;
 }
 
 /* TOGGLE */
@@ -460,6 +536,10 @@ async function guardar() {
   font-size: 0.82rem;
   color: #6b7280;
   margin-bottom: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
 }
 
 .horario-tag {
@@ -477,119 +557,35 @@ async function guardar() {
   color: #ca8a04;
 }
 
-/* para el responsive*/
-
-@media (max-width: 768px) {
-
-  .config-container {
-    gap: 16px;
-  }
-
-  .seccion {
-    padding: 16px;
-    border-radius: 10px;
-  }
-
-  .seccion h3 {
-    font-size: 0.95rem;
-    margin-bottom: 12px;
-  }
-
-  /* GRID → UNA SOLA COLUMNA */
-  .form-grid {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-
-  .campo label {
-    font-size: 0.78rem;
-  }
-
-  .campo input {
-    font-size: 0.85rem;
-    padding: 7px 9px;
-  }
-
-  /* TIME PICKER AJUSTADO */
-  .time-picker {
-    gap: 3px;
-    flex-wrap: nowrap;
-  }
-
-  .sel-hora,
-  .sel-min,
-  .sel-ampm {
-    font-size: 0.8rem;
-    padding: 6px 4px;
-  }
-
-  .sel-hora,
-  .sel-min {
-    width: 48px;
-  }
-
-  .sel-ampm {
-    width: 55px;
-  }
-
-  .sep {
-    font-size: 0.9rem;
-  }
-
-  .hint-hora {
-    font-size: 0.68rem;
-  }
-
-  .hint {
-    font-size: 0.7rem;
-  }
-
-  /* TOGGLE */
-  .campo-toggle {
-    justify-content: space-between;
-    gap: 8px;
-  }
-
-  .toggle {
-    width: 44px;
-    height: 24px;
-  }
-
-  .toggle-circulo {
-    width: 18px;
-    height: 18px;
-    top: 3px;
-  }
-
-  .toggle.activo .toggle-circulo {
-    left: 23px;
-  }
-
-  /* MENSAJES */
-  .exito,
-  .error {
-    font-size: 0.8rem;
-    padding: 10px;
-  }
-
-  /* BOTÓN */
-  .btn-guardar {
-    width: 100%;
-    text-align: center;
-    padding: 12px;
-    font-size: 0.9rem;
-  }
-
-  /* HORARIO INFO */
-  .horario-info {
-    font-size: 0.75rem;
-  }
-
-  .horario-tag {
-    font-size: 0.7rem;
-    padding: 2px 6px;
-  }
-
+.horario-tag.fuera {
+  background: #fee2e2;
+  color: #dc2626;
 }
 
+/* RESPONSIVE */
+@media (max-width: 768px) {
+  .config-container { gap: 16px; }
+  .seccion { padding: 16px; border-radius: 10px; }
+  .seccion h3 { font-size: 0.95rem; margin-bottom: 12px; }
+  .form-grid { grid-template-columns: 1fr; gap: 12px; }
+  .campo label { font-size: 0.78rem; }
+  .campo input { font-size: 0.85rem; padding: 7px 9px; }
+  .time-picker { gap: 3px; flex-wrap: nowrap; }
+  .sel-hora, .sel-min, .sel-ampm { font-size: 0.8rem; padding: 6px 4px; }
+  .sel-hora, .sel-min { width: 48px; }
+  .sel-ampm { width: 55px; }
+  .sep { font-size: 0.9rem; }
+  .hint-hora { font-size: 0.68rem; }
+  .hint { font-size: 0.7rem; }
+  .campo-toggle { justify-content: space-between; gap: 8px; }
+  .toggle { width: 44px; height: 24px; }
+  .toggle-circulo { width: 18px; height: 18px; top: 3px; }
+  .toggle.activo .toggle-circulo { left: 23px; }
+  .exito, .error { font-size: 0.8rem; padding: 10px; }
+  .btn-guardar { width: 100%; text-align: center; padding: 12px; font-size: 0.9rem; }
+  .horario-info { font-size: 0.75rem; }
+  .horario-tag { font-size: 0.7rem; padding: 2px 6px; }
+  .tolerancia-row { flex-wrap: wrap; }
+  .input-tolerancia { width: 70px; }
+}
 </style>

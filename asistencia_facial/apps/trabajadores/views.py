@@ -15,13 +15,20 @@ import os
 from django.conf import settings
 
 
-
-
 class TrabajadorListarCrearView(APIView):
     permission_classes = [EsAdmin]
 
     def get(self, request):
-        trabajadores = Trabajador.objects.all().order_by('apellido_paterno')
+        # Soporte a ?activo=true|false  (sin parámetro → todos)
+        activo_param = request.query_params.get('activo', '').lower()
+        if activo_param == 'true':
+            qs = Trabajador.objects.filter(activo=True)
+        elif activo_param == 'false':
+            qs = Trabajador.objects.filter(activo=False)
+        else:
+            qs = Trabajador.objects.all()
+
+        trabajadores = qs.order_by('apellido_paterno')
         serializer = TrabajadorSerializer(trabajadores, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -32,7 +39,7 @@ class TrabajadorListarCrearView(APIView):
                 serializer.errors,
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
+
         trabajador = serializer.save()
         try:
             rol = Rol.objects.get(nombre='TRABAJADOR')
@@ -47,7 +54,7 @@ class TrabajadorListarCrearView(APIView):
             pass
         except Exception as e:
             print(f'Error creando usuario automático: {e}')
-            
+
         registrar_auditoria(
             usuario=request.user,
             accion='CREAR_TRABAJADOR',
@@ -132,7 +139,6 @@ class TrabajadorDetalleView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        # Verificar si tiene marcaciones registradas
         forzar = request.data.get('forzar', False)
         if trabajador.marcaciones.exists() and not forzar:
             return Response(
@@ -142,9 +148,7 @@ class TrabajadorDetalleView(APIView):
 
         nombre_completo = f'{trabajador.nombres} {trabajador.apellido_paterno}'
         dni = trabajador.dni
-        
 
-        # Eliminar usuario asociado primero
         try:
             from apps.marcaciones.models import Marcacion
             from apps.auditoria.models import Auditoria
@@ -162,7 +166,7 @@ class TrabajadorDetalleView(APIView):
                 accion='ELIMINAR_TRABAJADOR',
                 descripcion=f'Trabajador eliminado: {nombre_completo} DNI: {dni}',
                 ip=request.META.get('REMOTE_ADDR', '0.0.0.0')
-                )
+            )
         return Response(
             {'mensaje': f'Trabajador {nombre_completo} eliminado correctamente'},
             status=status.HTTP_200_OK
@@ -200,8 +204,8 @@ class ActivarDesactivarTrabajadorView(APIView):
             },
             status=status.HTTP_200_OK
         )
-    
-#para mi foto de la base de datos
+
+
 class SubirFotoTrabajadorView(APIView):
     permission_classes = [EsAdmin]
 

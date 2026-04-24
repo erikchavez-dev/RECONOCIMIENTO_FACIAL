@@ -5,11 +5,15 @@ para luego migrar
 
 from django.db import models
 
+
 class ConfiguracionSistema(models.Model):
     hora_inicio_entrada = models.TimeField()
     hora_fin_entrada = models.TimeField()
     hora_inicio_salida = models.TimeField()
     hora_fin_salida = models.TimeField()
+    # Minutos de gracia DESPUÉS de hora_fin_entrada para marcar como TARDANZA
+    # Si se supera (hora_fin_entrada + tolerancia_minutos) → FUERA_HORARIO
+    tolerancia_minutos = models.IntegerField(default=30)
     max_intentos = models.IntegerField(default=5)
     max_intentos_faciales = models.IntegerField(default=5)
     umbral_similitud = models.FloatField(default=0.6)
@@ -17,12 +21,12 @@ class ConfiguracionSistema(models.Model):
     ip_autorizada = models.TextField(null=True, blank=True)
     control_ip_activo = models.BooleanField(default=False)
     ultima_modificacion_por_id = models.ForeignKey(
-    'usuarios.Usuario',
-    on_delete=models.SET_NULL,
-    null=True,
-    blank=True,
-    related_name='configuraciones_modificadas'
-)
+        'usuarios.Usuario',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='configuraciones_modificadas'
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -33,9 +37,7 @@ class ConfiguracionSistema(models.Model):
     def __str__(self):
         return f'Configuración #{self.id}'
 
-    # Método helper para obtener lista de IPs autorizadas
     def get_ips_autorizadas(self):
         if not self.ip_autorizada:
             return []
         return [ip.strip() for ip in self.ip_autorizada.split(',') if ip.strip()]
-    

@@ -93,27 +93,36 @@
         </div>
       </div>
 
-
-
-      <!-- Gráficos de linea y circular -->
+      <!-- Gráficos de barras y circular -->
       <div class="charts-row">
 
-        <!-- Gráfico de linea -->
+        <!-- Gráfico de BARRAS AGRUPADAS -->
         <div class="card">
           <div class="card-header">
-            <span class="card-title">Asistencia esta semana</span>
+            <span class="card-title">Asistencia</span>
+            <!-- Selector de período -->
+            <div class="periodo-tabs">
+              <button
+                v-for="p in periodos"
+                :key="p.valor"
+                :class="['tab-periodo', { activo: periodoActivo === p.valor }]"
+                @click="cambiarPeriodo(p.valor)"
+                :disabled="cargandoGrafico"
+              >{{ p.label }}</button>
+            </div>
           </div>
-          <div class="chart-legend">
+         <div class="chart-legend">
             <span class="leg-item"><span class="leg-dot" style="background:#10b981"></span>Puntuales</span>
             <span class="leg-item"><span class="leg-dot" style="background:#f59e0b"></span>Tardanzas</span>
-            <span class="leg-item"><span class="leg-dot" style="background:#94a3b8"></span>Sin marcar</span>
+            <span class="leg-item"><span class="leg-dot" style="background:#ef4444"></span>Faltas</span>
           </div>
-          <div class="chart-wrap">
-            <canvas ref="lineCanvas"></canvas>
+          <div class="chart-wrap" style="position:relative; height:200px;">
+            <div v-if="cargandoGrafico" class="chart-loading">Cargando datos...</div>
+            <canvas ref="barCanvas"></canvas>
           </div>
         </div>
 
-       <!-- Gráfico circular semanal -->
+        <!-- Gráfico circular con porcentajes -->
         <div class="card dona-card">
           <div class="card-header">
             <span class="card-title">Puntualidad semanal</span>
@@ -125,10 +134,10 @@
 
       </div>
 
-      <!-- Últimas marcaciones y mapa de donde se marco-->
+      <!-- Últimas marcaciones y mapa -->
       <div class="bottom-row">
 
-        <!-- Últimas marcaciones -->
+        <!-- Últimas marcaciones — más reciente primero -->
         <div class="card">
           <div class="card-header">
             <span class="card-title">Últimas marcaciones</span>
@@ -146,9 +155,10 @@
             </thead>
             <tbody>
               <tr v-if="marcacionesHoy.length === 0">
-                <td colspan="4" class="vacio">Aú no hay marcaciones el día de hoy</td>
+                <td colspan="4" class="vacio">Aún no hay marcaciones el día de hoy</td>
               </tr>
-              <tr v-for="m in marcacionesHoy.slice(0, 8)" :key="m.id">
+              <!-- slice invertido: más reciente primero -->
+              <tr v-for="m in marcacionesHoyInvertido.slice(0, 8)" :key="m.id">
                 <td class="td-nombre">{{ m.trabajador_nombre }}</td>
                 <td>{{ formatHora(m.fecha) }}</td>
                 <td>{{ m.tipo === 'ENTRADA' ? 'Entrada' : 'Salida' }}</td>
@@ -188,7 +198,6 @@ import iconoTardanza from '@/assets/dashboard-tardanza.svg'
 import iconoMarcacion from '@/assets/dashboard-marcacion.svg'
 import iconoSalida from '@/assets/dashboard-salida.svg'
 
-
 import { ref, computed, onMounted, nextTick } from 'vue'
 import AdminLayout from '@/components/AdminLayout.vue'
 import api from '@/services/api'
@@ -201,31 +210,44 @@ const auth   = useAuthStore()
 const stats  = ref({})
 const cargando     = ref(true)
 const cargandoHoy  = ref(true)
-const marcacionesHoy = ref([])
-const lineCanvas  = ref(null)
-let   lineChart   = null
+const cargandoGrafico = ref(false)
+const marcacionesHoy  = ref([])
+const barCanvas  = ref(null)
+let   barChart   = null
 const donaCanvas = ref(null)
-let donaChart = null
+let   donaChart  = null
 
-// Nombre del admin
-const nombreAdmin = computed(() => auth.usuario?.nombre_completo?.split(' ')[0] || auth.usuario?.nombre_completo?.split(' ')[1] || 'Admin')
+// ── Período del gráfico de barras ─────────────────────────
+const periodos = [
+  { valor: 'semanal',  label: 'Semanal'  },
+  { valor: 'mensual',  label: 'Mensual'  },
+  { valor: 'anual',    label: 'Anual'    },
+]
+const periodoActivo = ref('semanal')
 
-// Fecha legible
-const DIAS   = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado']
-const MESES  = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']
+// ── Computed: marcaciones en orden invertido (reciente primero) ──
+const marcacionesHoyInvertido = computed(() =>
+  [...marcacionesHoy.value].reverse()
+)
+
+// ── Nombre y fecha ────────────────────────────────────────
+const nombreAdmin = computed(() =>
+  auth.usuario?.nombre_completo?.split(' ')[0] ||
+  auth.usuario?.nombre_completo?.split(' ')[1] || 'Admin'
+)
+const DIAS  = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado']
+const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']
 const fechaTexto = computed(() => {
   const d = new Date()
   return `${DIAS[d.getDay()]} ${d.getDate()} de ${MESES[d.getMonth()]} del ${d.getFullYear()}`
 })
-
-// para las entradas de hoy en porcentaje
 const pctEntradas = computed(() => {
   const total = stats.value.trabajadores?.total_activos || 0
   const ent   = stats.value.hoy?.entradas || 0
   return total > 0 ? Math.round((ent / total) * 100) : 0
 })
 
-//para cagar los datos
+// ── Carga de estadísticas (sin cambios) ───────────────────
 async function cargarEstadisticas() {
   try {
     const r = await api.get('/api/marcaciones/estadisticas/')
@@ -235,7 +257,7 @@ async function cargarEstadisticas() {
   } finally {
     cargando.value = false
     await nextTick()
-    construirLineas()
+    construirBarras('semanal')
     construirDona()
   }
 }
@@ -251,53 +273,237 @@ async function cargarHoy() {
   }
 }
 
-
-//para el grafico
 onMounted(async () => {
-  await Promise.all([
-    cargarEstadisticas(),
-    cargarHoy()
-  ])
+  await Promise.all([cargarEstadisticas(), cargarHoy()])
   await nextTick()
-  construirLineas()  
-  construirDona()   
+  construirBarras('semanal')
+  construirDona()
   await nextTick()
   iniciarMapa()
 })
 
+// ── Cambiar período ───────────────────────────────────────
+async function cambiarPeriodo(nuevo) {
+  if (periodoActivo.value === nuevo || cargandoGrafico.value) return
+  periodoActivo.value = nuevo
+  await construirBarras(nuevo)
+}
 
-//funcion para el gráfico circular 
+// ── Helpers de fechas ─────────────────────────────────────
+function toLocalISO(d) {
+  return d.toLocaleDateString('en-CA')   // YYYY-MM-DD en zona local
+}
+
+function rangosSemana() {
+  const hoy = new Date()
+  const rangos = []
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(hoy)
+    d.setDate(hoy.getDate() - i)
+    rangos.push({ label: DIAS[d.getDay()].substring(0, 3), inicio: toLocalISO(d), fin: toLocalISO(d) })
+  }
+  return rangos
+}
+
+function rangosMes() {
+  const hoy   = new Date()
+  const anio  = hoy.getFullYear()
+  const mes   = hoy.getMonth()
+  const rangos = []
+  // Semanas del mes actual (agrupadas por semana ISO aprox.)
+  const primerDia = new Date(anio, mes, 1)
+  const ultimoDia = new Date(anio, mes + 1, 0).getDate()
+  let diaActual   = 1
+  let semana      = 1
+  while (diaActual <= ultimoDia) {
+    const finSemana = Math.min(diaActual + 6, ultimoDia)
+    const inicio    = toLocalISO(new Date(anio, mes, diaActual))
+    const fin       = toLocalISO(new Date(anio, mes, finSemana))
+    rangos.push({ label: `S${semana}`, inicio, fin })
+    diaActual += 7
+    semana++
+  }
+  return rangos
+}
+
+function rangosAnio() {
+  const anio   = new Date().getFullYear()
+  const mesesLabel = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
+  return mesesLabel.map((label, i) => {
+    const ultimo = new Date(anio, i + 1, 0).getDate()
+    return {
+      label,
+      inicio: toLocalISO(new Date(anio, i, 1)),
+      fin:    toLocalISO(new Date(anio, i, ultimo)),
+    }
+  })
+}
+
+// ── Construir gráfico de BARRAS AGRUPADAS ─────────────────
+
+async function construirBarras(periodo) {
+  if (!barCanvas.value) return
+  cargandoGrafico.value = true
+ 
+  let rangos = []
+  if (periodo === 'semanal')       rangos = rangosSemana()
+  else if (periodo === 'mensual')  rangos = rangosMes()
+  else                             rangos = rangosAnio()
+ 
+  const labels    = []
+  const puntuales = []
+  const tardanzas = []
+  const faltas    = []
+ 
+  // Total de trabajadores activos para calcular faltas
+  const totalActivos = stats.value.trabajadores?.total_activos || 0
+ 
+  for (const rango of rangos) {
+    labels.push(rango.label)
+    try {
+      const r   = await api.get('/api/marcaciones/reporte/', {
+        params: { fecha_inicio: rango.inicio, fecha_fin: rango.fin }
+      })
+      const est = r.data.estadisticas || {}
+      const p   = est.puntuales || 0
+      const t   = est.tardanzas || 0
+ 
+      puntuales.push(p)
+      tardanzas.push(t)
+ 
+      // Faltas = trabajadores que NO marcaron entrada en ese rango
+      // Para semanal (un día): totalActivos - entradas del día
+      // Para mensual/anual (varios días): no podemos saber exactamente sin
+      // un endpoint dedicado, así que usamos total_entradas como aproximación
+      // (entradas únicas distintas de trabajadores no disponibles directamente)
+      // → mostramos totalActivos - (p + t) como faltas del período
+      const entradas = est.total_entradas || 0
+      faltas.push(Math.max(0, totalActivos - entradas))
+    } catch {
+      puntuales.push(0)
+      tardanzas.push(0)
+      faltas.push(0)
+    }
+  }
+ 
+  if (barChart) barChart.destroy()
+ 
+  // Plugin inline que dibuja el número encima de cada barra
+  const datalabelsPlugin = {
+    id: 'barDatalabels',
+    afterDatasetsDraw(chart) {
+      const { ctx } = chart
+      chart.data.datasets.forEach((dataset, datasetIndex) => {
+        const meta = chart.getDatasetMeta(datasetIndex)
+        if (meta.hidden) return
+        meta.data.forEach((bar, index) => {
+          const valor = dataset.data[index]
+          if (!valor) return   // no dibujar 0
+          ctx.save()
+          ctx.fillStyle    = '#374151'
+          ctx.font         = 'bold 10px sans-serif'
+          ctx.textAlign    = 'center'
+          ctx.textBaseline = 'bottom'
+          ctx.fillText(String(valor), bar.x, bar.y - 2)
+          ctx.restore()
+        })
+      })
+    }
+  }
+ 
+  barChart = new Chart(barCanvas.value, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Puntuales',
+          data: puntuales,
+          backgroundColor: '#10b981',
+          borderRadius: 5,
+          borderSkipped: false,
+          barPercentage: 0.7,
+          categoryPercentage: 0.55,
+        },
+        {
+          label: 'Tardanzas',
+          data: tardanzas,
+          backgroundColor: '#f59e0b',
+          borderRadius: 5,
+          borderSkipped: false,
+          barPercentage: 0.7,
+          categoryPercentage: 0.55,
+        },
+        {
+          label: 'Faltas',
+          data: faltas,
+          backgroundColor: '#ef4444',
+          borderRadius: 5,
+          borderSkipped: false,
+          barPercentage: 0.7,
+          categoryPercentage: 0.55,
+        },
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      layout: {
+        padding: { top: 18 }   // espacio para los números encima
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          mode: 'index',
+          intersect: false,
+        },
+      },
+      scales: {
+        x: {
+          ticks: { color: '#94a3b8', font: { size: 11 } },
+          grid:  { display: false },
+        },
+        y: {
+          beginAtZero: true,
+          ticks: { color: '#94a3b8', font: { size: 11 }, stepSize: 1, precision: 0 },
+          grid:  { color: 'rgba(0,0,0,0.04)' },
+        }
+      }
+    },
+    plugins: [datalabelsPlugin]   // plugin inline registrado aquí
+  })
+ 
+  cargandoGrafico.value = false
+}
+
+
+// ── Gráfico circular con número y porcentaje ──────────────
 async function construirDona() {
   if (!donaCanvas.value) return
 
-  // Totales semanales: sumar puntuales, tardanzas, sin marcar
   const hoy = new Date()
   let puntuales = 0, tardanzas = 0, sinMarcar = 0
 
   for (let i = 6; i >= 0; i--) {
     const d = new Date(hoy)
     d.setDate(hoy.getDate() - i)
-    const fechaStr = d.toLocaleDateString('en-CA')
-
+    const fechaStr = toLocalISO(d)
     try {
-      const r = await api.get('/api/marcaciones/reporte/', {
+      const r      = await api.get('/api/marcaciones/reporte/', {
         params: { fecha_inicio: fechaStr, fecha_fin: fechaStr }
       })
-      const statsDia = r.data.estadisticas || {}
-      puntuales += statsDia.puntuales || 0
-      tardanzas += statsDia.tardanzas || 0
-      const total = statsDia.total_entradas || 0
-      const punt = statsDia.puntuales || 0
-      const tard = statsDia.tardanzas || 0
-      sinMarcar += Math.max(0, total - (punt + tard))
-
-
-    } catch (e) {
-      console.error('Error stats semana:', e)
+      const est = r.data.estadisticas || {}
+      puntuales += est.puntuales || 0
+      tardanzas += est.tardanzas || 0
+      const total = est.total_entradas || 0
+      sinMarcar  += Math.max(0, total - (est.puntuales || 0) - (est.tardanzas || 0))
+    } catch {
+      // ignorar
     }
   }
 
-  // Si ya existe, destruir
+  const totalDona = puntuales + tardanzas + sinMarcar
+
   if (donaChart) donaChart.destroy()
 
   donaChart = new Chart(donaCanvas.value, {
@@ -306,128 +512,96 @@ async function construirDona() {
       labels: ['Puntuales', 'Tardanzas', 'Sin marcar'],
       datasets: [{
         data: [puntuales, tardanzas, sinMarcar],
-        backgroundColor: ['#10b981', '#f58300', '#dfdfe4'],
+        backgroundColor: ['#10b981', '#f59e0b', '#dfdfe4'],
         borderWidth: 2,
         borderColor: '#fff',
-        hoverOffset: 10
+        hoverOffset: 10,
       }]
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: { position: 'bottom', labels: { color: '#64748b' } },
-        tooltip: { callbacks: {
-          label: function(context) {
-            return `${context.label}: ${context.raw}`
-          }
-        }}
-      }
-    }
-  })
-}
-
-
-// Gráfico de lineas 
-async function construirLineas() {
-  if (!lineCanvas.value) return
-
-  const hoy = new Date()
-  const labels = []
-  const entradas = []
-  const tardanzas = []
-
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date(hoy)
-    d.setDate(hoy.getDate() - i)
-    const fechaStr = d.toLocaleDateString('en-CA')
-    labels.push(DIAS[d.getDay()].substring(0, 3))
-
-    try {
-      const r = await api.get('/api/marcaciones/reporte/', {
-        params: { fecha_inicio: fechaStr, fecha_fin: fechaStr }
-      })
-      const puntuales = r.data.estadisticas?.puntuales || 0
-      const tard = r.data.estadisticas?.tardanzas || 0
-
-      entradas.push(puntuales)
-      tardanzas.push(tard)
-    } catch (e) {
-      entradas.push(0)
-      tardanzas.push(0)
-    }
-  }
-
-  if (lineChart) lineChart.destroy()
-
-  lineChart = new Chart(lineCanvas.value, {
-    type: 'line',
-    data: {
-      labels,
-      datasets: [
-        {
-          label: 'Puntuales',
-          data: entradas,
-          borderColor: '#10b981',
-          backgroundColor: 'rgba(26,58,107,0.08)',
-          borderWidth: 2.5,
-          pointBackgroundColor: '#10b981',
-          pointRadius: 4,
-          tension: 0.4,
-          fill: true,
+        legend: {
+          position: 'bottom',
+          labels: { color: '#64748b', font: { size: 11 }, padding: 12 }
         },
-        {
-          label: 'Tardanzas',
-          data: tardanzas,
-          borderColor: '#f58300',
-          backgroundColor: 'rgba(245,158,11,0.08)',
-          borderWidth: 2.5,
-          pointBackgroundColor: '#f58300',
-          pointRadius: 4,
-          tension: 0.4,
-          fill: true,
-        }
-      ]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: { mode: 'index', intersect: false }
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const val = ctx.raw
+              const pct = totalDona > 0 ? Math.round((val / totalDona) * 100) : 0
+              return ` ${ctx.label}: ${val} (${pct}%)`
+            }
+          }
+        },
+        // Plugin inline para mostrar número y % dentro de cada segmento
+        datalabels: false,   // por si chart.js-datalabels no está, usamos plugin custom
       },
-      scales: {
-        x: { ticks: { color: '#94a3b8 ', font: { size: 11 } }, grid: { display: false } },
-        y: {
-          beginAtZero: true,
-          ticks: { color: '#94a3b8 ', font: { size: 11 }, stepSize: 1 },
-          grid: { color: 'rgba(0,0,0,0.04)' }
-        }
+    },
+    // Plugin personalizado que dibuja el número y porcentaje dentro de cada segmento
+    plugins: [{
+      id: 'donaLabels',
+      afterDraw(chart) {
+        const { ctx, data } = chart
+        const total = data.datasets[0].data.reduce((a, b) => a + b, 0)
+        if (total === 0) return
+
+        chart.getDatasetMeta(0).data.forEach((arc, i) => {
+          const valor = data.datasets[0].data[i]
+          if (valor === 0) return
+          const pct = Math.round((valor / total) * 100)
+
+          // Posición central del segmento
+          const cx     = arc.x
+          const cy     = arc.y
+          const angle  = (arc.startAngle + arc.endAngle) / 2
+          const radio  = (arc.innerRadius + arc.outerRadius) / 2
+
+          const x = cx + Math.cos(angle) * radio
+          const y = cy + Math.sin(angle) * radio
+
+          // Solo dibujar si el segmento tiene suficiente espacio (> 5%)
+          if (pct < 5) return
+
+          ctx.save()
+          ctx.textAlign    = 'center'
+          ctx.textBaseline = 'middle'
+
+          // Número arriba
+          ctx.font      = 'bold 11px sans-serif'
+          ctx.fillStyle = pct > 30 ? '#fff' : '#374151'
+          ctx.fillText(String(valor), x, y - 7)
+
+          // Porcentaje abajo
+          ctx.font      = '10px sans-serif'
+          ctx.fillStyle = pct > 30 ? 'rgba(255,255,255,0.85)' : '#6b7280'
+          ctx.fillText(`${pct}%`, x, y + 7)
+
+          ctx.restore()
+        })
       }
-    }
+    }]
   })
 }
 
-// Marcaciones con geolocalización 
+// ── Mapa (sin cambios) ────────────────────────────────────
 const marcacionesConGeo = computed(() =>
   marcacionesHoy.value.filter(m => m.latitud && m.longitud).length
 )
-
-// Puntos del mapa
-// Agrupa marcaciones por ciudad y las ubica en posiciones relativas dentro del SVG (300x200)
 
 function iniciarMapa() {
   const contenedor = document.getElementById('mapa-leaflet')
   if (!contenedor) return
 
   if (!window.L) {
-    const link = document.createElement('link')
-    link.rel = 'stylesheet'
-    link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
+    const link    = document.createElement('link')
+    link.rel      = 'stylesheet'
+    link.href     = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
     document.head.appendChild(link)
 
-    const script = document.createElement('script')
-    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
+    const script  = document.createElement('script')
+    script.src    = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
     script.onload = () => renderizarMapa(contenedor)
     document.head.appendChild(script)
   } else {
@@ -437,14 +611,9 @@ function iniciarMapa() {
 
 function renderizarMapa(contenedor) {
   const L = window.L
-
-  if (contenedor._leaflet_id) {
-    contenedor._leaflet_id = null
-    contenedor.innerHTML = ''
-  }
+  if (contenedor._leaflet_id) { contenedor._leaflet_id = null; contenedor.innerHTML = '' }
 
   const mapa = L.map(contenedor).setView([-7.1518, -78.5117], 13)
-
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap'
   }).addTo(mapa)
@@ -452,24 +621,12 @@ function renderizarMapa(contenedor) {
   const conGeo = marcacionesHoy.value.filter(m => m.latitud && m.longitud)
 
   if (conGeo.length === 0) {
-    // Mostrar TODAS las marcaciones con GPS
-    marcacionesHoy.value.forEach((m, i) => {
-      const lat = -7.1626 + (Math.random() * 0.01)
-      const lng = -78.5001 + (Math.random() * 0.01)
-      
+    marcacionesHoy.value.forEach(m => {
+      const lat    = -7.1626 + (Math.random() * 0.01)
+      const lng    = -78.5001 + (Math.random() * 0.01)
       const marker = L.marker([lat, lng]).addTo(mapa)
-      marker.bindPopup(`
-      <b>${m.trabajador_nombre}</b><br>
-      ${m.tipo} — ${m.estado || ''}<br>
-      ${formatHora(m.fecha)}
-      
-      `)
-
-      // HOVER 
-      marker.bindTooltip(
-        `${m.trabajador_nombre}`,
-        { direction: 'top', offset: [0, -10] }
-      )
+      marker.bindPopup(`<b>${m.trabajador_nombre}</b><br>${m.tipo} — ${m.estado || ''}<br>${formatHora(m.fecha)}`)
+      marker.bindTooltip(m.trabajador_nombre, { direction: 'top', offset: [0, -10] })
     })
     return
   }
@@ -477,26 +634,17 @@ function renderizarMapa(contenedor) {
   conGeo.forEach(m => {
     const lat = parseFloat(m.latitud)
     const lng = parseFloat(m.longitud)
-
-    L.marker([lat, lng])
-      .addTo(mapa)
-      .bindPopup(`
-        <b>${m.trabajador_nombre}</b><br>
-        ${m.tipo} — ${m.estado || ''}<br>
-        ${formatHora(m.fecha)}
-      `)
+    L.marker([lat, lng]).addTo(mapa)
+      .bindPopup(`<b>${m.trabajador_nombre}</b><br>${m.tipo} — ${m.estado || ''}<br>${formatHora(m.fecha)}`)
   })
 }
 
-
 async function recargar() {
-  cargando.value = true
+  cargando.value    = true
   cargandoHoy.value = true
   await Promise.all([cargarEstadisticas(), cargarHoy()])
 }
 
-
-// Helpers 
 function formatHora(fecha) {
   return new Date(fecha).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })
 }
@@ -508,342 +656,85 @@ function formatHora(fecha) {
 .cargando { text-align: center; color: #666; padding: 40px; }
 
 /* ── Bienvenida ── */
-.welcome {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
+.welcome { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+.welcome-title { font-size: 1.7em; font-weight: 700; color: #1a3a6b; }
+.welcome-sub { font-size: 1em; color: #64748b; margin-top: 2px; }
+.welcome-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.badge-fecha { font-size: 0.93em; font-weight: 600; color: #1a3a6b; background: #f1f5f9; padding: 5px 12px; }
+.btn-refresh { background: #08c22a; color: #fff; font-size: 1.01em; font-weight: 600; border: none; padding: 11px 29px; border-radius: 6px; cursor: pointer; }
+.btn-refresh:hover { background: #4a7ac2; color: #fff; }
+.btn-refresh:disabled { opacity: 0.6; }
+
+/* ── Métricas ── */
+.metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+.mc { background: #fff; border-radius: 16px; border: 1px solid #f0f0f0; transition: all 0.2s ease; padding: 20px; }
+.mc:hover { transform: translateY(-8px); background: #000; border-radius: 16px; border: 1px solid #f0f0f0; }
+.mc-label { font-size: 1.03em; font-weight: 500; color: #000; }
+.mc-val { display: block; font-size: 1.7rem; font-weight: 700; color: #111827; margin-bottom: 8px; }
+.mc-sub { font-size: 0.9em !important; display: flex; align-items: center; gap: 4px; }
+.mc:hover .mc-label, .mc:hover .mc-val, .mc:hover .mc-footer { color: #fff !important; }
+.mc-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.tarjeta-icono { width: 34px; height: 34px; padding: 8px; background: #dfdfe4; border-radius: 8px; object-fit: contain; }
+
+/* ── Cards ── */
+.card { background: #fff; border-radius: 12px; border: 1px solid #e8eaf0; padding: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
+.card-title { font-size: 1.031em; font-weight: 600; color: #000; }
+.card-sub { font-size: 0.75rem; color: #9ca3af; }
+
+/* ── Selector de período ── */
+.periodo-tabs { display: flex; gap: 4px; }
+.tab-periodo {
+  padding: 4px 12px; border-radius: 20px; border: 1px solid #e2e8f0;
+  background: #f8fafc; color: #64748b; font-size: 0.75rem; font-weight: 600;
+  cursor: pointer; transition: all 0.15s;
+}
+.tab-periodo:hover:not(:disabled) { border-color: #1a3a6b; color: #1a3a6b; }
+.tab-periodo.activo { background: #1a3a6b; color: #fff; border-color: #1a3a6b; }
+.tab-periodo:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── Gráficos ── */
+.charts-row { display: grid; grid-template-columns: 1fr 280px; gap: 12px; }
+@media (max-width: 700px) { .charts-row { grid-template-columns: 1fr; } }
+
+.chart-legend { display: flex; gap: 14px; margin-bottom: 10px; flex-wrap: wrap; }
+.leg-item { display: flex; align-items: center; gap: 5px; font-size: 0.85em; color: #64748b; }
+.leg-dot { width: 12px; height: 12px; border-radius: 50px; flex-shrink: 0; }
+
+.chart-wrap { position: relative; height: 180px; }
+.chart-loading {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  background: rgba(255,255,255,0.8); font-size: 0.82rem; color: #94a3b8; border-radius: 8px; z-index: 2;
 }
 
-.welcome-title {
-  font-size: 1.7em;
-  font-weight: 700;
-  color: #1a3a6b;
-}
+/* ── Gráfico dona ── */
+.dona-card .dona-wrap { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
 
-.welcome-sub {
-  font-size: 1em;
-  color: #64748b;
-  margin-top: 2px;
-}
+/* ── Fila inferior ── */
+.bottom-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 700px) { .bottom-row { grid-template-columns: 1fr; } }
 
-.welcome-right {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.badge-fecha {
-  font-size: 0.93em;
-  font-weight: 600;
-  color: #1a3a6b;
-  background: #f1f5f9;
-  padding: 5px 12px;
-}
-
-.btn-refresh {
-  background: #08c22a;
-  color: rgb(255, 255, 255);
-  font-size: 1.01em;
-  font-weight: 600;
-  border: none;
-  padding: 11px 29px;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.btn-refresh:hover {
-  background: #4a7ac2;
-  color: #fff;
-}
-
-.btn-refresh:disabled {
-  opacity: 0.6;
-}
-
-/* Para todas las métricas*/
-.metrics {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 10px;
-}
-.mc {
-  background: #fff;
-  border-radius: 16px; 
-  border: 1px solid #f0f0f0;
-  transition: all 0.2s ease;
-  padding: 20px;
-}
-
-.mc:hover {
-  transform: translateY(-8px);
-  background: #000000;
-  border-radius: 16px;
-  border: 1px solid #f0f0f0;
-  transition: all 0.2s ease;
-  padding: 20px;
-}
-.mc-label {
-  font-size: 1.03em;
-  font-weight: 500;
-  color: #000000;
-}
-
-.mc-val {
-  display: block;
-  font-size: 1.7rem;
-  font-weight: 700;
-  color: #111827;
-  margin-bottom: 8px;
-}
-
-.mc-sub {
-  font-size: 0.9em !important;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.mc:hover .mc-label,
-.mc:hover .mc-val,
-.mc:hover .mc-footer,
-.mc-sub neutral .mc-sub up {
-  color: #fff !important;
-}
-
-.mc-header {
-  display: flex;
-  align-items: center;
-  gap: 12px; 
-  margin-bottom: 12px;
-}
-
-.tarjeta-icono {
-  width: 34px;
-  height: 34px;
-  padding: 8px;
-  background: #dfdfe4; 
-  border-radius: 8px;
-  object-fit: contain;
-}
-
-
-
-/* para todas las cajas del dashboard*/
-.card {
-  background: #fff;
-  border-radius: 12px;
-  border: 1px solid #e8eaf0;
-  padding: 16px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
-}
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  margin-bottom: 12px;
-}
-
-.card-title {
-  font-size: 1.031em;
-  font-weight: 600;
-  color: #000;
-}
-
-.card-sub {
-  font-size: 0.75rem;
-  color: #9ca3af;
-}
-
-/* para el gráfico de linea */
-.charts-row {
-  display: grid;
-  grid-template-columns: 1fr 280px;
-  gap: 12px;
-}
-
-@media (max-width: 700px) {
-  .charts-row {
-    grid-template-columns: 1fr;
-  }
-}
-
-.chart-legend {
-  display: flex;
-  gap: 14px;
-  margin-bottom: 10px;
-  flex-wrap: wrap;
-}
-
-.leg-item {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 0.85em;
-  color: #64748b;
-}
-
-.leg-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50px;
-  flex-shrink: 0;
-}
-
-.chart-wrap {
-  position: relative;
-  height: 180px;
-}
-
-/* para el grafico circular*/
-.dona-card .dona-wrap {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-.dona-svg {
-  width: 120px;
-  height: 120px;
-  flex-shrink: 0;
-}
-
-.dona-legend {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.dl-item {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  font-size: 0.75rem;
-  color: #64748b;
-}
-
-.dl-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-/* Fila inferior */
-.bottom-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
-
-@media (max-width: 700px) {
-  .bottom-row {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* Tabla de últimas marcaciones */
-.act-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.8rem;
-}
-
-.act-table th {
-  font-size: 1.05em;
-  font-weight: 600;
-  color: #0b50d0;
-  padding: 6px 8px;
-  border-bottom: 1px solid #f0f2f5;
-  text-align: left;
-}
-
-.act-table td {
-  padding: 8px 8px;
-  border-bottom: 1px solid #f8fafc;
-  color: #374151;
-}
-
-.act-table tr:last-child td {
-  border-bottom: none;
-}
-
-.act-table tr:hover td {
-  background: #f8fafc;
-}
-
-.td-nombre {
-  max-width: 140px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 1.02em;
-}
-
-.vacio {
-  font-size: 1.1em;
-  text-align: center;
-  color: #9ca3af;
-  padding: 20px !important;
-}
+/* ── Tabla marcaciones ── */
+.act-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+.act-table th { font-size: 1.05em; font-weight: 600; color: #0b50d0; padding: 6px 8px; border-bottom: 1px solid #f0f2f5; text-align: left; }
+.act-table td { padding: 8px 8px; border-bottom: 1px solid #f8fafc; color: #374151; }
+.act-table tr:last-child td { border-bottom: none; }
+.act-table tr:hover td { background: #f8fafc; }
+.td-nombre { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 1.02em; }
+.vacio { font-size: 1.1em; text-align: center; color: #9ca3af; padding: 20px !important; }
 
 /* ── Pills ── */
-.pill {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 10px;
-  font-size: 0.7rem;
-  font-weight: 600;
-}
-
-.pill-p {
-  background: #16a363;
-  color: #ffffff;
-}
-
-.pill-t {
-  background: #f58300;
-  color: #000000;
-}
-
-.pill-s {
-  background: #0e1ce6;
-  color: #ffffff;
-}
+.pill { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.7rem; font-weight: 600; }
+.pill-p { background: #16a363; color: #fff; }
+.pill-t { background: #f58300; color: #000; }
+.pill-s { background: #0e1ce6; color: #fff; }
 
 /* ── Mapa ── */
-.mapa-container {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.mapa-leaflet {
-  width: 100%;
-  height: 220px;
-  border-radius: 8px;
-  border: 1px solid #e2e8f0;
-}
-
-.mapa-info {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.75rem;
-  color: #64748b;
-}
-
-.ubi-marca p {
-  font-size: 1.05em;
-}
-
+.mapa-container { display: flex; flex-direction: column; gap: 8px; }
+.mapa-leaflet { width: 100%; height: 220px; border-radius: 8px; border: 1px solid #e2e8f0; }
+.mapa-info { display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: #64748b; }
+.ubi-marca p { font-size: 1.05em; }
 
 /* ── Cargando mini ── */
 .mini-cargando { text-align: center; color: #9ca3af; font-size: 0.82rem; padding: 20px; }
-
-
-
 </style>
