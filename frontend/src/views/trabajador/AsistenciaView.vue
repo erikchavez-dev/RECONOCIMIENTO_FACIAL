@@ -1,0 +1,779 @@
+<template>
+    <div class="panel" :class="{ light: !theme.oscuro }">
+
+        <!-- HEADER -->
+        <AppHeader />
+
+        <main class="content">
+            <div class="titulo-seccion">
+                <button @click="$router.push('/trabajador/panel')" class="btn-volver">← Volver</button>
+                <h2>Mi Asistencia</h2>
+            </div>
+
+            <div class="filtros-card">
+                <div class="filtros">
+                    <div class="campo">
+                        <label>Desde</label>
+                        <input v-model="fechaInicio" type="date" />
+                    </div>
+                    <div class="campo">
+                        <label>Hasta</label>
+                        <input v-model="fechaFin" type="date" />
+                    </div>
+                    <button @click="cargar" :disabled="cargando" class="btn-buscar">
+                        {{ cargando ? 'Cargando...' : 'Buscar' }}
+                    </button>
+                </div>
+            </div>
+
+            <div v-if="datos" class="resumen-grid">
+                <div class="resumen-card verde">
+                    <div class="res-icon"></div>
+                    <span class="res-valor">{{ datos.resumen.asistencias }}</span>
+                    <span class="res-label">Asistencias</span>
+                </div>
+                <div class="resumen-card amarillo">
+                    <div class="res-icon"></div>
+                    <span class="res-valor">{{ datos.resumen.tardanzas }}</span>
+                    <span class="res-label">Tardanzas</span>
+                </div>
+                <div class="resumen-card rojo">
+                    <div class="res-icon"></div>
+                    <span class="res-valor">{{ datos.resumen.faltas }}</span>
+                    <span class="res-label">Faltas</span>
+                </div>
+                <div class="resumen-card azul">
+                    <div class="res-icon"></div>
+                    <span class="res-valor">{{ datos.resumen.total_dias }}</span>
+                    <span class="res-label">Días registrados</span>
+                </div>
+            </div>
+
+            <div v-if="datos" class="tabla-card">
+                <div v-if="datos.dias.length === 0" class="vacio">
+                    No hay registros en este período
+                </div>
+                <table v-else class="tabla">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Entrada</th>
+                            <th>Salida</th>
+                            <th>Tiempo trabajado</th>
+                            <th>Resultado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="dia in itemsPagina" :key="dia.fecha">
+                            <td class="celda-fecha">
+                                <span class="dia-semana">{{ dia.dia_semana }}</span>
+                                <span class="dia-fecha-txt">{{ formatearFechaCorta(dia.fecha) }}</span>
+                            </td>
+                            <td>
+                                <div v-if="dia.entrada_hora" class="celda-marcacion">
+                                    <span :class="['chip', dia.entrada_estado === 'PUNTUAL' ? 'chip-p' : 'chip-t']">
+                                        {{ dia.entrada_estado === 'PUNTUAL' ? 'P' : 'T' }}
+                                    </span>
+                                    <span class="hora-texto">{{ dia.entrada_hora }}</span>
+                                </div>
+                                <span v-else class="sin-dato">—</span>
+                            </td>
+                            <td>
+                                <div v-if="dia.salida_hora" class="celda-marcacion">
+                                    <span class="chip chip-s">S</span>
+                                    <span class="hora-texto">{{ dia.salida_hora }}</span>
+                                </div>
+                                <span v-else class="sin-dato">—</span>
+                            </td>
+                            <td>
+                                <span v-if="dia.tiempo_trabajado" class="tiempo-trabajado">
+                                    {{ dia.tiempo_trabajado }}
+                                </span>
+                                <span v-else class="sin-dato">—</span>
+                            </td>
+                            <td>
+                                <span :class="['resultado-chip', claseResultado(dia.resultado)]">
+                                    {{ dia.resultado }}
+                                </span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- PAGINACIÓN -->
+            <div class="paginacion" v-if="datos && totalPaginas > 1">
+
+                <button @click="irA(1)" :disabled="paginaActual === 1" class="btn-pagina btn-extremo">
+                    «
+                </button>
+
+                <button @click="irA(paginaActual - 1)" :disabled="paginaActual === 1" class="btn-pagina">
+                    ‹ Anterior
+                </button>
+
+                <div class="paginas-numeros">
+                    <button v-for="p in paginasVisibles" :key="p" @click="irA(p)"
+                        :class="['btn-num', p === paginaActual ? 'activo' : '']">
+                        {{ p }}
+                    </button>
+                </div>
+
+                <button @click="irA(paginaActual + 1)" :disabled="paginaActual === totalPaginas" class="btn-pagina">
+                    Siguiente ›
+                </button>
+
+                <button @click="irA(totalPaginas)" :disabled="paginaActual === totalPaginas"
+                    class="btn-pagina btn-extremo">
+                    »
+                </button>
+
+            </div>
+            <div v-if="cargando" class="cargando">Cargando...</div>
+        </main>
+    </div>
+</template>
+
+<script setup>
+
+import { ref, computed, onMounted } from 'vue'
+import { useThemeStore } from '@/stores/theme'
+import { useAuth } from '@/composables/useAuth'
+import { useFecha } from '@/composables/useFecha'
+import { usePaginacion } from '@/composables/usePaginacion'
+import AppHeader from '@/components/layout/AppHeader.vue'
+import api from '@/services/api'
+
+const theme = useThemeStore()
+const { auth, handleLogout } = useAuth()
+const { formatearFechaCorta, claseResultado } = useFecha()
+
+const datos = ref(null)
+const cargando = ref(false)
+
+// Días ordenados descendente
+const diasOrdenados = computed(() =>
+    datos.value
+        ? [...datos.value.dias].sort((a, b) => b.fecha.localeCompare(a.fecha))
+        : []
+)
+
+// Paginación
+const {
+    paginaActual,
+    totalPaginas,
+    paginasVisibles,
+    itemsPagina,
+    resetear,
+    irA
+} = usePaginacion(diasOrdenados, 8)
+
+const hoy = new Date()
+const primerDia = new Date(hoy.getFullYear(), hoy.getMonth(), 1)
+
+const fechaInicio = ref(primerDia.toISOString().split('T')[0])
+const fechaFin = ref(hoy.toISOString().split('T')[0])
+
+onMounted(() => cargar())
+
+async function cargar() {
+    cargando.value = true
+    resetear()
+
+    try {
+        const response = await api.get('/api/marcaciones/asistencia/', {
+            params: {
+                fecha_inicio: fechaInicio.value,
+                fecha_fin: fechaFin.value
+            }
+        })
+
+        datos.value = response.data
+
+    } catch (e) {
+        console.error('Error cargando asistencia:', e)
+
+    } finally {
+        cargando.value = false
+    }
+}
+
+</script>
+
+<style scoped>
+/* ── TEMA OSCURO (defecto) ── */
+.panel {
+    --bg-main: #141416cc;
+    --bg-card: #141416;
+    --bg-soft: rgba(255, 255, 255, 0.08);
+    --text-main: #fcfcfd;
+    --text-soft: rgba(255, 255, 255, 0.6);
+    --border-color: #232327;
+    --accent: #18c440;
+
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--bg-main);
+    color: var(--text-main);
+}
+
+/* ── TEMA CLARO ── */
+.panel.light {
+    --bg-main: #f8fafc;
+    --bg-card: #ffffff;
+    --bg-soft: #f1f5f9;
+    --text-main: #0f172a;
+    --text-soft: #64748b;
+    --border-color: #e2e8f0;
+    --accent: #2563eb;
+    --azulito: #1a3a6b;
+}
+
+/* ── CONTENT ── */
+.content {
+    position: relative;
+    z-index: 10;
+    flex: 1;
+    padding: 28px 32px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    background-color: var(--bg-main);
+}
+
+/* ── TÍTULO ── */
+.titulo-seccion {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.btn-volver {
+    background: var(--bg-soft);
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+    font-size: 0.9rem;
+    font-weight: 600;
+    padding: 8px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-volver:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+h2 {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--text-main);
+    margin: 0;
+}
+
+/* ── FILTROS ── */
+.filtros-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 16px 20px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.panel.light .filtros-card {
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.07);
+}
+
+.filtros {
+    display: flex;
+    align-items: flex-end;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.campo {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.campo label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.campo input {
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 0.88rem;
+    background: var(--bg-soft);
+    color: var(--text-main);
+    transition: border-color 0.2s;
+}
+
+.campo input:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+.btn-buscar {
+    padding: 9px 24px;
+    background: var(--azulito);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.88rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.btn-buscar:hover:not(:disabled) {
+    opacity: 0.88;
+    transform: translateY(-1px);
+}
+
+.btn-buscar:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* ── RESUMEN ── */
+.resumen-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+}
+
+.resumen-card {
+    border-radius: 8px;
+    padding: 18px 16px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    border: 2px solid var(--border-color);
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    cursor: default;
+}
+
+.resumen-card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    border-radius: 14px 0 0 14px;
+}
+
+.resumen-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+/* oscuro */
+
+
+
+/* claro */
+.panel.light .resumen-card.verde {
+    background: #ebe9e9;
+}
+
+.panel.light .resumen-card.amarillo {
+    background: #ebe9e9;
+}
+
+.panel.light .resumen-card.rojo {
+    background: #ebe9e9;
+}
+
+.panel.light .resumen-card.azul {
+    background: #ebe9e9;
+}
+
+.res-icon {
+    font-size: 1.5rem;
+    line-height: 1;
+    margin-bottom: 2px;
+}
+
+.res-valor {
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--text-main);
+    line-height: 1;
+
+}
+
+.res-label {
+    font-size: 0.73rem;
+    color: var(--text-main);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* ── TABLA ── */
+.tabla-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    overflow: auto;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.panel.light .tabla-card {
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.07);
+}
+
+.tabla {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+}
+
+.tabla th {
+    background: var(--accent);
+    color: white;
+    padding: 12px 16px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.panel.light .tabla th {
+    background: #1a3a6b;
+}
+
+.tabla td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-main);
+}
+
+.tabla tr:last-child td {
+    border-bottom: none;
+}
+
+.tabla tbody tr:hover {
+    background: var(--bg-soft);
+}
+
+/* CELDA FECHA */
+.celda-fecha {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.dia-semana {
+    font-weight: 700;
+    color: var(--accent);
+    font-size: 0.82rem;
+}
+
+.dia-fecha-txt {
+    font-size: 0.82rem;
+    color: var(--text-soft);
+}
+
+/* MARCACIÓN */
+.celda-marcacion {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.chip {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 0.75rem;
+    flex-shrink: 0;
+}
+
+.chip-p {
+    background: rgba(22, 163, 74, 0.2);
+    color: #22c55e;
+}
+
+.chip-t {
+    background: rgba(251, 191, 36, 0.2);
+    color: #f59e0b;
+}
+
+.chip-s {
+    background: rgba(59, 130, 246, 0.2);
+    color: #60a5fa;
+}
+
+.panel.light .chip-p {
+    background: #dcfce7;
+    color: #16a34a;
+}
+
+.panel.light .chip-t {
+    background: #fef9c3;
+    color: #b45309;
+}
+
+.panel.light .chip-s {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+.hora-texto {
+    font-size: 0.82rem;
+    color: var(--text-main);
+    font-weight: 500;
+}
+
+.tiempo-trabajado {
+    font-family: monospace;
+    font-size: 0.88rem;
+    color: var(--accent);
+    font-weight: 600;
+}
+
+/* RESULTADO */
+.resultado-chip {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.73rem;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+}
+
+/* oscuro */
+.res-asistio {
+    background: rgba(22, 163, 74, 0.15);
+    color: #22c55e;
+}
+
+.res-tardanza {
+    background: rgba(251, 191, 36, 0.15);
+    color: #f59e0b;
+}
+
+.res-falta {
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+}
+
+.res-incompleto {
+    background: rgba(59, 130, 246, 0.15);
+    color: #60a5fa;
+}
+
+.res-pendiente {
+    background: rgba(148, 163, 184, 0.15);
+    color: #94a3b8;
+}
+
+.res-no-laborable {
+    background: rgba(148, 163, 184, 0.08);
+    color: #64748b;
+}
+
+/* claro */
+
+.panel.light .res-asistio {
+    background: #dcfce7;
+    color: #16a34a;
+}
+
+.panel.light .res-tardanza {
+    background: #fef9c3;
+    color: #b45309;
+}
+
+.panel.light .res-falta {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+.panel.light .res-incompleto {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+.panel.light .res-pendiente {
+    background: #f1f5f9;
+    color: #475569;
+}
+
+.panel.light .res-no-laborable {
+    background: #f8fafc;
+    color: #94a3b8;
+}
+
+.sin-dato {
+    color: var(--text-soft);
+    font-size: 0.85rem;
+    opacity: 0.5;
+}
+
+.vacio {
+    text-align: center;
+    padding: 48px;
+    color: var(--text-soft);
+    font-size: 0.9rem;
+}
+
+.cargando {
+    text-align: center;
+    padding: 48px;
+    color: var(--text-soft);
+    font-size: 0.9rem;
+}
+
+/* ───────── PAGINACIÓN ───────── */
+
+.paginacion {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 14px;
+    padding: 15px;
+}
+
+.paginas-numeros {
+    display: flex;
+    gap: 6px;
+}
+
+.paginacion button {
+    background: #026d5f;
+    flex-shrink: 0;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.btn-pagina:hover:not(:disabled),
+.btn-num:hover {
+    background: #01c5ab;
+}
+
+.btn-num.activo {
+    background: #00f483;
+    font-weight: bold;
+}
+
+.paginacion button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+
+
+/* Tema oscuro */
+.panel:not(.light) .btn-num.activo {
+    color: #000;
+}
+
+
+
+/* ── RESPONSIVE ── */
+@media (max-width: 768px) {
+    .content {
+        padding: 16px;
+        gap: 14px;
+    }
+
+    h2 {
+        font-size: 1.1rem;
+    }
+
+    .filtros {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .campo input {
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .btn-buscar {
+        width: 100%;
+        padding: 12px;
+    }
+
+    .resumen-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+
+    .res-valor {
+        font-size: 1.6rem;
+    }
+
+    .res-icon {
+        font-size: 1.2rem;
+    }
+
+    .tabla th,
+    .tabla td {
+        padding: 10px 10px;
+        font-size: 0.78rem;
+    }
+
+    .chip {
+        width: 20px;
+        height: 20px;
+        font-size: 0.65rem;
+    }
+
+    .hora-texto {
+        font-size: 0.75rem;
+    }
+
+    .resultado-chip {
+        font-size: 0.65rem;
+        padding: 3px 8px;
+    }
+
+    .paginacion {
+        gap: 6px;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        padding: 10px;
+    }
+
+    .paginas-numeros {
+        display: flex;
+        gap: 6px;
+    }
+
+    .paginacion button {
+        flex-shrink: 0;
+        padding: 5px 8px;
+        font-size: 0.8rem;
+    }
+
+    .btn-extremo {
+        display: none;
+    }
+}
+</style>

@@ -1,22 +1,8 @@
 <template>
   <div class="panel" :class="{ light: !theme.oscuro }">
 
-    <header class="header-bar">
-      <div class="header-left">
-        <img src="/sgd_logo.webp" alt="Logo" class="logo" />
-        <span class="sistema-nombre">Sistema de Control de Asistencia</span>
-      </div>
-      <div class="header-right">
-        <span class="nombre-chip">
-          <img :src="iconoPerfil" class="icono-perfil" />
-          {{ auth.usuario?.nombre_completo }}
-        </span>
-        <button @click="theme.toggle()" class="btn-sm" :title="theme.oscuro ? 'Tema claro' : 'Tema oscuro'">
-          <img :src="theme.oscuro ? iconoSol : iconoLuna" alt="Icono Tema" class="icono-btn" />
-        </button>
-        <button @click="handleLogout" class="btn-logout">⬅ Salir</button>
-      </div>
-    </header>
+    <!-- HEADER -->
+    <AppHeader />
 
     <main class="content">
       <div class="titulo-seccion">
@@ -78,7 +64,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="dia in datos.dias" :key="dia.fecha">
+            <tr v-for="dia in itemsPagina" :key="dia.fecha">
               <td class="celda-fecha">
                 <span class="dia-semana">{{ dia.dia_semana }}</span>
                 <span class="dia-fecha-txt">{{ formatearFechaCorta(dia.fecha) }}</span>
@@ -115,6 +101,33 @@
         </table>
       </div>
 
+     <!-- PAGINACIÓN -->
+      <div class="paginacion" v-if="datos && totalPaginas > 1">
+
+        <button @click="irA(1)" :disabled="paginaActual === 1" class="btn-pagina btn-extremo">
+          «
+        </button>
+
+        <button @click="irA(paginaActual - 1)" :disabled="paginaActual === 1" class="btn-pagina">
+          ‹ Anterior
+        </button>
+
+        <div class="paginas-numeros">
+          <button v-for="p in paginasVisibles" :key="p" @click="irA(p)"
+            :class="['btn-num', p === paginaActual ? 'activo' : '']">
+            {{ p }}
+          </button>
+        </div>
+
+        <button @click="irA(paginaActual + 1)" :disabled="paginaActual === totalPaginas" class="btn-pagina">
+          Siguiente ›
+        </button>
+
+        <button @click="irA(totalPaginas)" :disabled="paginaActual === totalPaginas" class="btn-pagina btn-extremo">
+          »
+        </button>
+
+      </div>
       <div v-if="cargando" class="cargando">Cargando...</div>
     </main>
   </div>

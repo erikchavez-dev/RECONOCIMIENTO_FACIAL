@@ -604,14 +604,60 @@ function formatHora(fecha) {
 .cargando { text-align: center; color: #666; padding: 40px; }
 
 /* ── Bienvenida ── */
-.welcome { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
-.welcome-title { font-size: 1.7em; font-weight: 700; color: #1a3a6b; }
-.welcome-sub { font-size: 1em; color: #64748b; margin-top: 2px; }
-.welcome-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.badge-fecha { font-size: 0.93em; font-weight: 600; color: #1a3a6b; background: #f1f5f9; padding: 5px 12px; }
-.btn-refresh { background: #08c22a; color: #fff; font-size: 1.01em; font-weight: 600; border: none; padding: 11px 29px; border-radius: 6px; cursor: pointer; }
-.btn-refresh:hover { background: #4a7ac2; color: #fff; }
-.btn-refresh:disabled { opacity: 0.6; }
+.welcome {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.welcome-title {
+  font-size: 1.7em;
+  font-weight: 700;
+  color: #1a3a6b;
+}
+
+.welcome-sub {
+  font-size: 1.03em;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.welcome-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.badge-fecha {
+  font-size: 1.05em;
+  font-weight: 600;
+  color: #1a3a6b;
+  background: #f1f5f9;
+  padding: 5px 12px;
+}
+
+.btn-refresh {
+  background: #1a3a6b;
+  color: #fff;
+  font-size: 1.01em;
+  font-weight: 600;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.btn-refresh:hover {
+  background: #000000;
+  color: #ffffff;
+}
+
+.btn-refresh:disabled {
+  opacity: 0.6;
+}
 
 /* ── Métricas ── */
 .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
@@ -631,16 +677,38 @@ function formatHora(fecha) {
 .card-sub { font-size: 0.75rem; color: #9ca3af; }
 
 /* ── Selector de período ── */
-.periodo-tabs { display: flex; gap: 4px; }
-.tab-periodo {
-  padding: 4px 12px; border-radius: 20px; border: 1px solid #e2e8f0;
-  background: #f8fafc; color: #64748b; font-size: 0.75rem; font-weight: 600;
-  cursor: pointer; transition: all 0.15s;
+.periodo-tabs {
+  display: flex;
+  gap: 4px;
 }
-.tab-periodo:hover:not(:disabled) { border-color: #1a3a6b; color: #1a3a6b; }
-.tab-periodo.activo { background: #1a3a6b; color: #fff; border-color: #1a3a6b; }
-.tab-periodo:disabled { opacity: 0.5; cursor: not-allowed; }
 
+.tab-periodo {
+  padding: 7px 19px;
+  margin-left: 8px;
+  border-radius: 6px;
+  background: #dfdfe4;
+  border: 0px;
+  color: #000000;
+  font-size: 0.95em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.tab-periodo:hover:not(:disabled) {
+  background: #000000;
+  color: #ffffff;
+}
+
+.tab-periodo.activo {
+  background: #059462;
+  color: #fff;
+}
+
+.tab-periodo:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 /* ── Gráficos ── */
 .charts-row { display: grid; grid-template-columns: 1fr 280px; gap: 12px; }
 @media (max-width: 700px) { .charts-row { grid-template-columns: 1fr; } }

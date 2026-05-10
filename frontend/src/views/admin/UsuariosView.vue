@@ -260,7 +260,7 @@ async function cambiarRol(u, nuevoRol) {
 }
 
 .btn-actualizar {
-  background: #08c22a;
+  background: #1a3a6b;
   color: rgb(255, 255, 255);
   font-size: 1.01em;
   font-weight: 600;
@@ -272,7 +272,7 @@ async function cambiarRol(u, nuevoRol) {
 }
 
 .btn-actualizar:hover {
-  background: #4a7ac2;
+  background: #000000;
   color: #ffffff;
 }
 .btn-actualizar disabled {

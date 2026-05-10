@@ -574,7 +574,7 @@ async function eliminar(t) {
 }
 
 .btn-nuevo {
-  background: #08c22a;
+  background: #1a3a6b;
   color: rgb(255, 255, 255);
   font-size: 1.01em;
   font-weight: 600;
@@ -585,7 +585,7 @@ async function eliminar(t) {
 }
 
 .btn-nuevo:hover {
-  background: #4a7ac2;
+  background: #000000;
   color: #fff;
 }
 .btn-nuevo disabled {

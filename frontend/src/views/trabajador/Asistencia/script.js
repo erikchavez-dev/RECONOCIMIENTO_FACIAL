@@ -1,21 +1,31 @@
-import iconoPerfil from '@/assets/icon-perfil.svg'
-import iconoLuna   from '@/assets/icon-luna.svg'
-import iconoSol    from '@/assets/icon-sol.svg'
-
-import { ref, onMounted } from 'vue'
-import { useRouter }      from 'vue-router'
-import { useAuthStore }   from '@/stores/auth'
-import { useThemeStore }  from '@/stores/theme'
-import api                from '@/services/api'
+import { ref, computed, onMounted } from 'vue'
+import { useThemeStore }   from '@/stores/theme'
+import { useAuth }         from '@/composables/useAuth'
+import { useFecha }        from '@/composables/useFecha'
+import { usePaginacion }   from '@/composables/usePaginacion'
+import AppHeader           from '@/components/layout/AppHeader.vue'
+import api                 from '@/services/api'
 
 export default {
+  components: { AppHeader },
   setup() {
-    const router = useRouter()
-    const auth   = useAuthStore()
-    const theme  = useThemeStore()
+    const theme                  = useThemeStore()
+    const { auth, handleLogout } = useAuth()
+    const { formatearFechaCorta, claseResultado } = useFecha()
 
     const datos    = ref(null)
     const cargando = ref(false)
+
+    // Días ordenados descendente: más reciente primero
+    const diasOrdenados = computed(() =>
+      datos.value
+        ? [...datos.value.dias].sort((a, b) => b.fecha.localeCompare(a.fecha))
+        : []
+    )
+
+    // Paginación cliente: 20 días por página
+    const { paginaActual, totalPaginas, paginasVisibles, itemsPagina, resetear, irA } =
+      usePaginacion(diasOrdenados, 8)
 
     const hoy       = new Date()
     const primerDia = new Date(hoy.getFullYear(), hoy.getMonth(), 1)
@@ -26,6 +36,7 @@ export default {
 
     async function cargar() {
       cargando.value = true
+      resetear()
       try {
         const response = await api.get('/api/marcaciones/asistencia/', {
           params: { fecha_inicio: fechaInicio.value, fecha_fin: fechaFin.value }
@@ -38,25 +49,7 @@ export default {
       }
     }
 
-    function formatearFechaCorta(fechaStr) {
-      const [y, m, d] = fechaStr.split('-')
-      return `${d}/${m}/${y}`
-    }
-
-    function claseResultado(resultado) {
-      if (resultado === 'ASISTIÓ')    return 'res-asistio'
-      if (resultado === 'TARDANZA')   return 'res-tardanza'
-      if (resultado === 'SIN SALIDA') return 'res-sin-salida'
-      return 'res-falta'
-    }
-
-    async function handleLogout() {
-      await auth.logout()
-      router.push('/login')
-    }
-
     return {
-      iconoPerfil, iconoLuna, iconoSol,
       auth, theme,
       datos, cargando,
       fechaInicio, fechaFin,
@@ -64,6 +57,8 @@ export default {
       formatearFechaCorta,
       claseResultado,
       handleLogout,
+      // paginación
+      paginaActual, totalPaginas, paginasVisibles, itemsPagina, irA,
     }
   }
 }

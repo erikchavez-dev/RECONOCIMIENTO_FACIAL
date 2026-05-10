@@ -65,8 +65,8 @@ import iconoDispositivo from '@/assets/icono-dispositivo.png'
 
 /* HERO */
 .hero {
-  min-height: 75vh;
-  background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url('/cajamarca-inicio.webp');
+  min-height: 80vh;
+  background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url('/cajamarca-login.webp');
   background-size: cover;
   background-position: center;
   position: relative;
@@ -90,9 +90,13 @@ import iconoDispositivo from '@/assets/icono-dispositivo.png'
 }
 
 .logo {
-  width: 140px;
-  height: 116px;
+  width: 280px;
+  height: 108px;
   object-fit: contain;
+  background-color: rgba(128, 128, 128, 0.5); 
+  border-radius: 12px; /* Un toque redondeado para que se vea más profesional */
+  padding: 10px;
+
 }
 
 h1 {
@@ -102,24 +106,28 @@ h1 {
 }
 
 p {
-  font-size: 1rem;
-  color: #cdd8e8;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #ffffff ;
 }
 
 
 .btn-iniciar {
   margin-top: 16px;
-  padding: 12px 36px;
-  background-color: #172845; /* Tu azul original */
-  color: rgb(233, 229, 19); /* Tu amarillo original */
-  border: 1px solid white;
-  border-radius: 6px;
+  padding: 12px 36px; 
+  background: linear-gradient(135deg, #0c9b2d 20%, #07551a 80%);
+  color: white;
+  border: none; 
+  border-radius: 7px; 
   font-size: 1.05rem;
   font-weight: 600;
+  letter-spacing: 1px;
   cursor: pointer;
-  position: relative; /* Necesario para posicionar el relleno */
-  overflow: hidden;    /* Para que el relleno no se salga de los bordes */
-  transition: color 0.4s ease; /* Transición suave del color de texto */
+
+  box-shadow: 0 4px 15px rgba(24, 196, 64, 0.3);
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
   z-index: 1;
 }
 
@@ -139,7 +147,7 @@ p {
 
 /* Efecto al pasar el mouse */
 .btn-iniciar:hover {
-  color: #172845; /* El texto cambia a azul cuando el fondo es blanco */
+  color: #000000; /* El texto cambia a azul cuando el fondo es blanco */
 }
 
 .btn-iniciar:hover::before {

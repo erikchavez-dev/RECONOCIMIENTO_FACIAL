@@ -69,7 +69,7 @@
           <tr v-if="marcaciones.length === 0">
             <td colspan="6" class="vacio">No hay marcaciones en este período</td>
           </tr>
-          <tr v-for="m in marcaciones" :key="m.id">
+          <tr v-for="m in itemsPagina" :key="m.id">
             <td class="td-nombre">{{ m.trabajador_nombre }}</td>
             <td>{{ m.dni }}</td>
             <td>
@@ -90,9 +90,18 @@
       </table>
     </div>
 
-    <!-- Pie: total de registros mostrados -->
+    <!-- Paginador -->
+    <PaginadorUI
+      :pagina-actual="paginaActual"
+      :total-paginas="totalPaginas"
+      :paginas-visibles="paginasVisibles"
+      @ir="irA"
+    />
+
+    <!-- Pie: total de registros -->
     <div v-if="!cargando && marcaciones.length > 0" class="pie-tabla">
-      {{ marcaciones.length }} registro{{ marcaciones.length !== 1 ? 's' : '' }} encontrado{{ marcaciones.length !== 1 ? 's' : '' }}
+      {{ marcaciones.length }} registro{{ marcaciones.length !== 1 ? 's' : '' }} —
+      mostrando {{ itemsPagina.length }} en esta página
     </div>
 
   </AdminLayout>
@@ -100,12 +109,18 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import AdminLayout from '@/components/AdminLayout.vue'
+import AdminLayout  from '@/components/AdminLayout.vue'
+import PaginadorUI  from '@/components/ui/PaginadorUI.vue'
+import { usePaginacion } from '@/composables/usePaginacion'
 import api from '@/services/api'
 
-const marcaciones    = ref([])
-const cargando       = ref(true)
-const periodoActivo  = ref('hoy')
+const marcaciones   = ref([])
+const cargando      = ref(true)
+const periodoActivo = ref('hoy')
+
+// Paginación cliente: 25 filas por página, sobre el array completo
+const { paginaActual, totalPaginas, paginasVisibles, itemsPagina, resetear, irA } =
+  usePaginacion(marcaciones, 25)
 
 const tabs = [
   { valor: 'hoy',    label: 'Hoy'    },
@@ -119,11 +134,11 @@ const fechaHoy = computed(() =>
   })
 )
 
-// Estadísticas calculadas desde las marcaciones cargadas
+// Estadísticas calculadas sobre el array completo (no solo la página)
 const stats = computed(() => {
   if (!marcaciones.value.length) return null
-  const entradas  = marcaciones.value.filter(m => m.tipo === 'ENTRADA')
-  const salidas   = marcaciones.value.filter(m => m.tipo === 'SALIDA')
+  const entradas = marcaciones.value.filter(m => m.tipo === 'ENTRADA')
+  const salidas  = marcaciones.value.filter(m => m.tipo === 'SALIDA')
   return {
     total:     marcaciones.value.length,
     entradas:  entradas.length,
@@ -133,17 +148,14 @@ const stats = computed(() => {
   }
 })
 
-// Calcula las fechas de inicio y fin según el período
 function getRango(periodo) {
-  const hoy = new Date()
-  const toISO = d => d.toLocaleDateString('en-CA')   // YYYY-MM-DD local
+  const hoy   = new Date()
+  const toISO = d => d.toLocaleDateString('en-CA')
 
-  if (periodo === 'hoy') {
+  if (periodo === 'hoy')
     return { inicio: toISO(hoy), fin: toISO(hoy) }
-  }
 
   if (periodo === 'semana') {
-    // Lunes de la semana actual
     const lunes = new Date(hoy)
     lunes.setDate(hoy.getDate() - ((hoy.getDay() + 6) % 7))
     return { inicio: toISO(lunes), fin: toISO(hoy) }
@@ -155,21 +167,24 @@ function getRango(periodo) {
   }
 }
 
+// Ordena siempre descendente: más reciente primero
+function ordenarDescendente(lista) {
+  return [...lista].sort((a, b) => new Date(b.fecha) - new Date(a.fecha))
+}
+
 async function cargar() {
   cargando.value = true
+  resetear()
   try {
     if (periodoActivo.value === 'hoy') {
-      // Usa el endpoint de hoy (más eficiente)
       const res = await api.get('/api/marcaciones/hoy/')
-      // El endpoint hoy devuelve marcaciones con campo fecha ya formateado
-      marcaciones.value = (res.data.marcaciones || []).slice().reverse()
+      marcaciones.value = ordenarDescendente(res.data.marcaciones || [])
     } else {
-      // Para semana y mes usa el endpoint de reporte
       const { inicio, fin } = getRango(periodoActivo.value)
       const res = await api.get('/api/marcaciones/reporte/', {
         params: { fecha_inicio: inicio, fecha_fin: fin }
       })
-      marcaciones.value = res.data.marcaciones || []
+      marcaciones.value = ordenarDescendente(res.data.marcaciones || [])
     }
   } catch (e) {
     console.error('Error cargando marcaciones:', e)
@@ -194,7 +209,6 @@ function formatearFechaHora(fecha) {
 
 onMounted(cargar)
 </script>
-
 <style scoped>
 /* ── Toolbar ── */
 .toolbar {
@@ -265,7 +279,7 @@ onMounted(cargar)
 
 /* ── Botón actualizar ── */
 .btn-actualizar {
-  background: #08c22a;
+  background: #1a3a6b;
   color: white;
   font-size: 0.9em;
   font-weight: 600;
@@ -277,7 +291,7 @@ onMounted(cargar)
   white-space: nowrap;
 }
 
-.btn-actualizar:hover:not(:disabled) { background: #4a7ac2; }
+.btn-actualizar:hover:not(:disabled) { background: #000000; }
 .btn-actualizar:disabled { opacity: 0.6; cursor: not-allowed; }
 
 /* ── Stats rápidas ── */

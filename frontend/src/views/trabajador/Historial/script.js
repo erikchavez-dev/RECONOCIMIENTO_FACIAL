@@ -1,23 +1,27 @@
-import iconoPerfil from '@/assets/icon-perfil.svg'
-import iconoLuna   from '@/assets/icon-luna.svg'
-import iconoSol    from '@/assets/icon-sol.svg'
-import relojArena  from '@/assets/reloj-de-arena.webp'
+import relojArena from '@/assets/reloj-de-arena.webp'
 
 import { ref, onMounted } from 'vue'
-import { useRouter }      from 'vue-router'
-import { useAuthStore }   from '@/stores/auth'
 import { useThemeStore }  from '@/stores/theme'
+import { useAuth }        from '@/composables/useAuth'
+import AppHeader          from '@/components/layout/AppHeader.vue'
+import { usePaginacion }  from '@/composables/usePaginacion'
 import api                from '@/services/api'
 
 export default {
+  components: { AppHeader },
   setup() {
-    const router = useRouter()
-    const auth   = useAuthStore()
-    const theme  = useThemeStore()
+    const theme                  = useThemeStore()
+    const { auth, handleLogout } = useAuth()
 
     const marcaciones = ref([])
     const cargando    = ref(true)
     const error       = ref('')
+    const {
+      paginaActual,
+      totalPaginas,
+      paginasVisibles,
+      itemsPagina,
+    } = usePaginacion(marcaciones, 6)
 
     onMounted(async () => {
       try {
@@ -32,27 +36,57 @@ export default {
     })
 
     function formatearFecha(fecha) {
+      if (!fecha) return '—'
       return new Date(fecha).toLocaleDateString('es-PE', {
-        weekday: 'short', year: 'numeric', month: '2-digit', day: '2-digit'
-      })
+        weekday: 'long', day: '2-digit', month: 'long', year: 'numeric'
+      }).replace(/^\w/, c => c.toUpperCase())
     }
 
     function formatearHora(fecha) {
+      if (!fecha) return '—'
       return new Date(fecha).toLocaleTimeString('es-PE', {
         hour: '2-digit', minute: '2-digit'
       })
     }
 
-    async function handleLogout() {
-      await auth.logout()
-      router.push('/login')
+    function formatearTipo(tipo) {
+      if (!tipo) return '—'
+      if (tipo.includes('ENTRADA')) return 'Entrada'
+      if (tipo.includes('SALIDA'))  return 'Salida'
+      return tipo
+    }
+
+    function tipoPillClass(tipo = '') {
+      if (tipo.includes('ENTRADA')) return 'pill-entrada'
+      if (tipo.includes('SALIDA'))  return 'pill-salida'
+      return ''
+    }
+
+    function estadoDotClass(estado = '') {
+      if (estado === 'PUNTUAL') return 'dot-puntual'
+      return 'dot-fuera'
+    }
+
+    function estadoTextoClass(estado = '') {
+      if (estado === 'PUNTUAL') return 'texto-puntual'
+      return 'texto-fuera'
     }
 
     return {
-      iconoPerfil, iconoLuna, iconoSol, relojArena,
+      relojArena,
       auth, theme,
       marcaciones, cargando, error,
-      formatearFecha, formatearHora, handleLogout,
+      handleLogout,
+      paginaActual,
+      totalPaginas,
+      paginasVisibles,
+      itemsPagina,
+      formatearFecha,
+      formatearHora,
+      formatearTipo,
+      tipoPillClass,
+      estadoDotClass,
+      estadoTextoClass,
     }
   }
 }

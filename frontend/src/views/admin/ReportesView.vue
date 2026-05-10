@@ -316,11 +316,11 @@ function formatearFechaHora(fecha) {
   font-size: 0.9rem;
 }
 
-.btn-ver:hover:not(:disabled) { background: #142d54; }
+.btn-ver:hover:not(:disabled) { background: #000000; }
 
 .btn-pdf {
   padding: 10px 24px;
-  background: #dc2626;
+  background: #ff0000;
   color: white;
   border: none;
   border-radius: 6px;
@@ -328,7 +328,7 @@ function formatearFechaHora(fecha) {
   font-size: 0.9rem;
 }
 
-.btn-pdf:hover:not(:disabled) { background: #b91c1c; }
+.btn-pdf:hover:not(:disabled) { background: #cc0202; }
 
 .btn-ver:disabled, .btn-pdf:disabled { opacity: 0.7; cursor: not-allowed; }
 

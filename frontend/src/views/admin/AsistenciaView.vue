@@ -79,7 +79,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="dia in datos.dias" :key="dia.fecha">
+          <tr v-for="dia in itemsPagina" :key="dia.fecha">
             <!-- FECHA -->
             <td class="celda-fecha">
               <span class="dia-semana">{{ dia.dia_semana }}</span>
@@ -129,6 +129,15 @@
         </tbody>
       </table>
     </div>
+
+    <!-- Paginador -->
+    <PaginadorUI
+      v-if="datos"
+      :pagina-actual="paginaActual"
+      :total-paginas="totalPaginas"
+      :paginas-visibles="paginasVisibles"
+      @ir="irA"
+    />
 
     <div v-if="cargando" class="cargando">Cargando...</div>
 
@@ -185,8 +194,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import AdminLayout from '@/components/AdminLayout.vue'
+import { ref, computed, onMounted } from 'vue'
+import AdminLayout   from '@/components/AdminLayout.vue'
+import PaginadorUI   from '@/components/ui/PaginadorUI.vue'
+import { usePaginacion } from '@/composables/usePaginacion'
 import api from '@/services/api'
 
 const trabajadoresOriginal = ref([])
@@ -196,6 +207,18 @@ const trabajadorId  = ref(null)
 const datos         = ref(null)
 const cargando      = ref(false)
 const error         = ref('')
+
+// Días ordenados: más reciente primero (el backend los devuelve descendente
+// pero por seguridad lo forzamos aquí también)
+const diasOrdenados = computed(() =>
+  datos.value
+    ? [...datos.value.dias].sort((a, b) => b.fecha.localeCompare(a.fecha))
+    : []
+)
+
+// Paginación cliente: 20 días por página sobre diasOrdenados
+const { paginaActual, totalPaginas, paginasVisibles, itemsPagina, resetear, irA } =
+  usePaginacion(diasOrdenados, 20)
 
 const hoy      = new Date()
 const primerDia = new Date(hoy.getFullYear(), hoy.getMonth(), 1)
@@ -352,6 +375,7 @@ async function cargar() {
   if (!trabajadorId.value) return
   error.value = ''
   cargando.value = true
+  resetear()
   try {
     const response = await api.get('/api/marcaciones/asistencia/admin/', {
       params: {

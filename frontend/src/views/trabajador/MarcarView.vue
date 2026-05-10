@@ -2,22 +2,7 @@
   <div class="panel" :class="{ light: !theme.oscuro }">
 
     <!-- HEADER -->
-    <header class="header-bar">
-      <div class="header-left">
-        <img src="/sgd_logo.webp" alt="Logo" class="logo" />
-        <span class="sistema-nombre">Sistema de Control de Asistencia</span>
-      </div>
-      <div class="header-right">
-        <span class="nombre-chip">
-          <img :src="iconoPerfil" class="icono-perfil" />
-          {{ auth.usuario?.nombre_completo }}
-        </span>
-        <button @click="theme.toggle()" class="btn-sm" :title="theme.oscuro ? 'Tema claro' : 'Tema oscuro'">
-          <img :src="theme.oscuro ? iconoSol : iconoLuna" alt="Icono Tema" class="icono-btn" />
-        </button>
-        <button @click="handleLogout" class="btn-logout">⬅ Salir</button>
-      </div>
-    </header>
+    <AppHeader :antes-de-logout="detenerCamara" />
 
     <main class="content">
       <div class="titulo-seccion">
@@ -25,41 +10,17 @@
         <h2>Marcar Asistencia</h2>
       </div>
 
-      <!-- PASO 1: CONFIRMACIÓN -->
-      <div v-if="paso === 'confirmar'" class="confirmacion-container">
-        <div class="confirmacion-card">
-          <div class="confirmacion-icono">{{ tipoMarcacion === 'ENTRADA' ? '🟢' : '🔴' }}</div>
-          <h3>{{ tipoMarcacion === 'ENTRADA' ? 'Registrar Entrada' : 'Registrar Salida' }}</h3>
-          <p class="fecha-texto">{{ fechaHora }}</p>
-
-          <div class="geo-status" :class="geoClase">
-            <span class="geo-dot"></span>
-            <span class="geo-txt">{{ geoTexto }}</span>
-          </div>
-
-          <p class="confirmacion-pregunta">
-            ¿Desea registrar su <strong>{{ tipoMarcacion === 'ENTRADA' ? 'entrada' : 'salida' }}</strong> ahora?
-          </p>
-          <div class="confirmacion-botones">
-            <button @click="volver" class="btn-no">No</button>
-            <button @click="confirmar" class="btn-si">Sí, registrar</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- PASO 2: CÁMARA -->
+      <!-- PASO: CÁMARA -->
       <div v-if="paso === 'camara'" class="camara-container">
 
-        <!-- Barra de intentos restantes -->
-        <div v-if="intentosRestantes !== null" class="intentos-bar">
-          <span class="intentos-label">Intentos restantes:</span>
-          <span
-            v-for="n in maxIntentos" :key="n"
-            class="intento-dot"
-            :class="n <= intentosRestantes ? 'dot-activo' : 'dot-usado'"
-          ></span>
-          <span class="intentos-num" :class="intentosRestantes <= 1 ? 'texto-rojo' : ''">
-            {{ intentosRestantes }}
+        <!-- Aviso de pocos intentos (solo cuando quedan 2 o menos) -->
+        <div v-if="intentosRestantes !== null && intentosRestantes <= 2" class="alerta-intentos"
+             :class="intentosRestantes === 1 ? 'alerta-critica' : 'alerta-advertencia'">
+          <span class="alerta-icono">{{ intentosRestantes === 1 ? '🚨' : '⚠️' }}</span>
+          <span class="alerta-texto">
+            {{ intentosRestantes === 1
+              ? 'Último intento — si falla, su cuenta será bloqueada'
+              : 'Solo quedan 2 intentos antes del bloqueo' }}
           </span>
         </div>
 
@@ -76,42 +37,51 @@
               />
             </svg>
           </div>
-          <div v-if="detectando" class="overlay-procesando">
-            <div class="spinner"></div>
-            <span>Verificando...</span>
-          </div>
           <canvas ref="canvasRef" style="display:none"></canvas>
         </div>
 
-        <p class="instruccion" :class="instruccionClase">{{ mensajeEstado }}</p>
+        <!-- Mensaje de estado mejorado -->
+        <div class="mensaje-estado-wrapper" :class="estadoClase">
+          <span class="mensaje-icono-estado">{{ mensajeIcono }}</span>
+          <p class="instruccion">{{ mensajeEstado }}</p>
+        </div>
 
         <button @click="intentarMarcacion" :disabled="detectando" class="btn-capturar">
-          <span v-if="detectando">⏳ Procesando...</span>
-          <span v-else>📸 Verificar rostro</span>
+          📸 Verificar rostro
         </button>
 
-        <div v-if="errorCamara" class="error-box">{{ errorCamara }}</div>
+        <div v-if="errorCamara" class="error-box">
+          <span class="error-icono">⚠️</span> {{ errorCamara }}
+        </div>
       </div>
 
-      <!-- PASO 3: RESULTADO -->
+      <!-- PASO: RESULTADO -->
       <div v-if="paso === 'resultado'" class="resultado-container">
         <div :class="['resultado-card', resultado.exito ? 'resultado-exito' : resultado.info ? 'resultado-info' : 'resultado-error']">
-          <div class="resultado-icono">
-            <img
-              :src="resultado.exito ? iconoExito : resultado.info ? iconoExito : iconoError"
-              :alt="resultado.exito ? 'Éxito' : 'Info'"
-              class="img-resultado"
-            />
+
+          <!-- Icono grande con emoji en lugar de img -->
+          <div class="resultado-emoji">
+            {{ resultado.exito ? '✅' : resultado.info ? 'ℹ️' : '❌' }}
           </div>
+
           <h3>{{ resultado.mensaje }}</h3>
-          <p v-if="resultado.tipo" class="res-dato">Tipo: <strong>{{ resultado.tipo }}</strong></p>
-          <p v-if="resultado.estado" class="res-dato">
-            Estado:
-            <strong :class="resultado.estado === 'PUNTUAL' ? 'texto-verde' : 'texto-amarillo'">
-              {{ resultado.estado }}
-            </strong>
-          </p>
-          <p v-if="resultado.hora" class="res-dato">Hora: <strong>{{ resultado.hora }}</strong></p>
+
+          <div v-if="resultado.tipo || resultado.estado || resultado.hora" class="resultado-detalles">
+            <div v-if="resultado.tipo" class="detalle-fila">
+              <span class="detalle-label">Tipo</span>
+              <span class="detalle-valor">{{ resultado.tipo }}</span>
+            </div>
+            <div v-if="resultado.estado" class="detalle-fila">
+              <span class="detalle-label">Estado</span>
+              <span class="detalle-valor" :class="resultado.estado === 'PUNTUAL' ? 'texto-verde' : 'texto-amarillo'">
+                {{ resultado.estado }}
+              </span>
+            </div>
+            <div v-if="resultado.hora" class="detalle-fila">
+              <span class="detalle-label">Hora</span>
+              <span class="detalle-valor">{{ resultado.hora }}</span>
+            </div>
+          </div>
 
           <div v-if="resultado.va_a_asistencia !== undefined" class="asistencia-badge"
                :class="resultado.va_a_asistencia ? 'badge-cuenta' : 'badge-no-cuenta'">
@@ -119,8 +89,8 @@
           </div>
 
           <div v-if="resultado.ubicacion && resultado.exito" class="ubicacion-resultado">
-            <span class="ubi-icon">📍</span>
-            <span class="ubi-txt">
+            <span>📍</span>
+            <span>
               {{ resultado.ubicacion.ciudad || 'Red local' }}
               <span v-if="resultado.ubicacion.pais">, {{ resultado.ubicacion.pais }}</span>
             </span>
@@ -144,21 +114,22 @@
 </template>
 
 <script setup>
-import iconoPerfil from '@/assets/icon-perfil.svg'
-import iconoLuna   from '@/assets/icon-luna.svg'
-import iconoSol    from '@/assets/icon-sol.svg'
-import iconoExito  from '@/assets/icon-check.svg'
-import iconoError  from '@/assets/icon-sin-marcar.svg'
-
-import { ref, onMounted, onUnmounted, computed } from 'vue'
-import { useRouter }     from 'vue-router'
-import { useAuthStore }  from '@/stores/auth'
-import { useThemeStore } from '@/stores/theme'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useRouter }          from 'vue-router'
+import { useThemeStore }      from '@/stores/theme'
+import { useAuthStore }       from '@/stores/auth'
+import { useFecha }           from '@/composables/useFecha'
+import { useGeolocalizacion } from '@/composables/useGeolocalizacion'
+import AppHeader              from '@/components/layout/AppHeader.vue'
+import GeoStatus              from '@/components/marcaciones/GeoStatus.vue'
 import api from '@/services/api'
 
 const router = useRouter()
-const auth   = useAuthStore()
 const theme  = useThemeStore()
+const auth   = useAuthStore()
+const { fechaHoraActual: fechaHora }                            = useFecha()
+const { geoLatitud, geoLongitud, geoTexto, geoClase,
+        pedirGeolocalizacion }                                  = useGeolocalizacion()
 
 const videoRef         = ref(null)
 const canvasRef        = ref(null)
@@ -166,37 +137,27 @@ const detectando       = ref(false)
 const resultado        = ref(null)
 const errorCamara      = ref('')
 const mensajeEstado    = ref('Centre su rostro dentro del óvalo y presione el botón')
-const instruccionClase = ref('')
-const paso             = ref('confirmar')
+const estadoTipo       = ref('neutro') // 'neutro' | 'error' | 'advertencia' | 'ok'
+const paso             = ref('camara')
 const tipoMarcacion    = ref('ENTRADA')
-
 const intentosRestantes = ref(null)
-const maxIntentos       = ref(5)
-
-const geoLatitud  = ref(null)
-const geoLongitud = ref(null)
-const geoEstado   = ref('obteniendo')
 
 let stream = null
 
 // ─── COMPUTED ──────────────────────────────────────────────────────────────
-const fechaHora = computed(() => new Date().toLocaleString('es-PE', {
-  weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
-  hour: '2-digit', minute: '2-digit'
+const estadoClase = computed(() => ({
+  'estado-neutro':      estadoTipo.value === 'neutro',
+  'estado-error':       estadoTipo.value === 'error',
+  'estado-advertencia': estadoTipo.value === 'advertencia',
+  'estado-ok':          estadoTipo.value === 'ok',
 }))
 
-const geoTexto = computed(() => ({
-  obteniendo:    'Obteniendo ubicación...',
-  ok:            'Ubicación obtenida',
-  denegado:      'Permiso de ubicación denegado (opcional)',
-  'no-soportado':'Geolocalización no disponible en este dispositivo'
-}[geoEstado.value] || ''))
-
-const geoClase = computed(() => ({
-  'geo-ok':       geoEstado.value === 'ok',
-  'geo-denegado': geoEstado.value === 'denegado',
-  'geo-cargando': geoEstado.value === 'obteniendo',
-}))
+const mensajeIcono = computed(() => {
+  if (estadoTipo.value === 'error')       return '✗'
+  if (estadoTipo.value === 'advertencia') return '!'
+  if (estadoTipo.value === 'ok')          return '✓'
+  return '○'
+})
 
 // ─── LIFECYCLE ─────────────────────────────────────────────────────────────
 onMounted(async () => {
@@ -206,23 +167,12 @@ onMounted(async () => {
 
 onUnmounted(() => detenerCamara())
 
-// ─── GEO ───────────────────────────────────────────────────────────────────
-function pedirGeolocalizacion() {
-  if (!navigator.geolocation) { geoEstado.value = 'no-soportado'; return }
-  geoEstado.value = 'obteniendo'
-  navigator.geolocation.getCurrentPosition(
-    pos => { geoLatitud.value = pos.coords.latitude; geoLongitud.value = pos.coords.longitude; geoEstado.value = 'ok' },
-    ()  => { geoEstado.value = 'denegado' },
-    { timeout: 8000, maximumAge: 60000 }
-  )
-}
-
 // ─── VERIFICAR TIPO ─────────────────────────────────────────────────────────
 async function verificarTipoMarcacion() {
   try {
-    const trabajadorId   = auth.usuario?.trabajador_id
+    const trabajadorId = auth.usuario?.trabajador_id
     const { data: marcaciones } = await api.get(`/api/marcaciones/historial/${trabajadorId}/`)
-    const hoy            = new Date().toLocaleDateString('es-PE')
+    const hoy = new Date().toLocaleDateString('es-PE')
 
     const hoyValidas = marcaciones.filter(m =>
       new Date(m.fecha).toLocaleDateString('es-PE') === hoy && m.va_a_asistencia === true
@@ -244,19 +194,17 @@ async function verificarTipoMarcacion() {
     }
 
     tipoMarcacion.value = entradaHoy ? 'SALIDA' : 'ENTRADA'
-    paso.value = 'confirmar'
+    // Ir directo a cámara, sin confirmación
+    paso.value = 'camara'
+    await iniciarCamara()
   } catch {
     tipoMarcacion.value = 'ENTRADA'
-    paso.value = 'confirmar'
+    paso.value = 'camara'
+    await iniciarCamara()
   }
 }
 
 // ─── CÁMARA ─────────────────────────────────────────────────────────────────
-async function confirmar() {
-  paso.value = 'camara'
-  await iniciarCamara()
-}
-
 async function iniciarCamara() {
   errorCamara.value = ''
   try {
@@ -274,32 +222,21 @@ function detenerCamara() {
 }
 
 // ─── CAPTURA OPTIMIZADA ─────────────────────────────────────────────────────
-// La resolución de captura enviada al backend es 320×240.
-// InsightFace con det_size=(320,320) trabaja perfectamente a esta resolución
-// cuando el rostro está centrado y ocupa la mayor parte del encuadre.
-// Beneficios:
-//   · Payload: de ~120 KB a ~12-18 KB de base64  → menos tiempo de transferencia
-//   · Backend: el modelo procesa 4x menos píxeles → inferencia ~50-60% más rápida
-//   · La calidad visual del video en pantalla NO cambia (el video sigue en 640×480)
 function capturarImagenOptimizada() {
   const canvas = canvasRef.value
   const video  = videoRef.value
-
   canvas.width  = 320
   canvas.height = 240
   canvas.getContext('2d').drawImage(video, 0, 0, 320, 240)
-
-  // Calidad 0.85: sigue siendo excelente para reconocimiento facial
-  // y produce un base64 aún más pequeño que 0.95
   return canvas.toDataURL('image/jpeg', 0.85)
 }
 
 // ─── MARCACION ──────────────────────────────────────────────────────────────
 async function intentarMarcacion() {
   if (detectando.value) return
-  detectando.value   = true
-  instruccionClase.value = ''
-  mensajeEstado.value    = 'Verificando identidad...'
+  detectando.value = true
+  estadoTipo.value = 'neutro'
+  mensajeEstado.value = 'Verificando identidad...'
 
   try {
     const payload = {
@@ -334,7 +271,6 @@ async function intentarMarcacion() {
     paso.value = 'resultado'
 
   } catch (e) {
-    // CRÍTICO: liberar el botón siempre, antes de cualquier otra lógica
     detectando.value = false
 
     const msg    = e.response?.data?.error || ''
@@ -345,17 +281,14 @@ async function intentarMarcacion() {
       return setMensajeError('Sin conexión con el servidor. Verifique su red e intente de nuevo.')
     }
 
-    // Múltiples rostros
     if (msgL.includes('más de un rostro') || msgL.includes('mas de un rostro')) {
-      return setMensajeError('⚠️ Se detectaron varias personas. Asegúrese de estar solo frente a la cámara.')
+      return setMensajeError('Se detectaron varias personas. Asegúrese de estar solo frente a la cámara.')
     }
 
-    // Sin rostro / baja calidad
     if (msgL.includes('no se detectó') || msgL.includes('no se pudo detectar') || msgL.includes('calidad')) {
       return setMensajeError('No se detectó rostro. Acérquese, mejore la iluminación y presione de nuevo.')
     }
 
-    // Sin embedding
     if (msgL.includes('no tiene embedding') || msgL.includes('embedding registrado')) {
       detenerCamara()
       paso.value = 'resultado'
@@ -363,7 +296,6 @@ async function intentarMarcacion() {
       return
     }
 
-    // IP no autorizada
     if (status === 403 && (msgL.includes('ip') || msgL.includes('red'))) {
       detenerCamara()
       paso.value = 'resultado'
@@ -371,7 +303,6 @@ async function intentarMarcacion() {
       return
     }
 
-    // Bloqueado (403 general)
     if (status === 403) {
       detenerCamara()
       paso.value = 'resultado'
@@ -379,7 +310,6 @@ async function intentarMarcacion() {
       return
     }
 
-    // Rostro no coincide (401)
     if (status === 401 || msgL.includes('no coincide')) {
       const match     = msg.match(/Intentos restantes:\s*(\d+)/i)
       const restantes = match ? parseInt(match[1]) : null
@@ -393,14 +323,16 @@ async function intentarMarcacion() {
         return
       }
 
-      if      (restantes >= 4) return setMensajeError('Rostro no coincide. Posiciónese bien frente a la cámara.')
-      else if (restantes === 3) return setMensajeError('No coincide. Acérquese más y mejore la iluminación.')
-      else if (restantes === 2) return setMensajeError('⚠️ No coincide. Mire de frente con buena luz. Quedan pocos intentos.')
-      else if (restantes === 1) return setMensajeError('🚨 Último intento — si falla, su cuenta será bloqueada.')
-      else                      return setMensajeError('Rostro no coincide. Intente de nuevo.')
+      // Mensajes escalonados por urgencia
+      if (restantes === 1) {
+        return setMensajeError('Rostro no reconocido. Intente de nuevo en buenas condiciones de luz.', 'error')
+      } else if (restantes === 2) {
+        return setMensajeError('Rostro no reconocido. Acérquese más y mire de frente.', 'advertencia')
+      } else {
+        return setMensajeError('Rostro no reconocido. Reposiciónese frente a la cámara y vuelva a intentar.', 'neutro')
+      }
     }
 
-    // Error 500 — no colgar, dejar reintentar
     if (status === 500) {
       return setMensajeError('Error en el servidor. Espere un momento e intente de nuevo.')
     }
@@ -410,16 +342,16 @@ async function intentarMarcacion() {
 }
 
 // ─── HELPERS ────────────────────────────────────────────────────────────────
-function setMensajeError(msg) {
-  mensajeEstado.value    = msg
-  instruccionClase.value = 'instruccion-error'
+function setMensajeError(msg, tipo = 'error') {
+  mensajeEstado.value = msg
+  estadoTipo.value    = tipo
 }
 
 function reiniciar() {
   resultado.value         = null
   errorCamara.value       = ''
   mensajeEstado.value     = 'Centre su rostro dentro del óvalo y presione el botón'
-  instruccionClase.value  = ''
+  estadoTipo.value        = 'neutro'
   intentosRestantes.value = null
   verificarTipoMarcacion()
 }
@@ -427,12 +359,6 @@ function reiniciar() {
 function volver() {
   detenerCamara()
   router.push('/trabajador/panel')
-}
-
-async function handleLogout() {
-  detenerCamara()
-  await auth.logout()
-  router.push('/login')
 }
 </script>
 
@@ -449,33 +375,6 @@ async function handleLogout() {
   --text-main: #0f172a; --text-soft: #64748b;
   --border-color: #e2e8f0; --accent: #2563eb;
 }
-
-/* HEADER */
-.header-bar {
-  position: relative; z-index: 10;
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 12px 28px; border-bottom: 2px solid var(--accent); background: var(--bg-card);
-}
-.header-left, .header-right { display: flex; align-items: center; gap: 10px; }
-.logo { width: 150px; height: 50px; object-fit: contain; }
-.sistema-nombre { color: var(--text-main); font-weight: 600; font-size: 0.95rem; opacity: 0.9; }
-.nombre-chip {
-  display: flex; align-items: center; gap: 6px; color: var(--text-main); font-size: 0.82rem;
-  background: var(--bg-soft); padding: 9px 14px; border-radius: 6px; border: 1px solid var(--border-color);
-}
-.icono-perfil { width: 18px; height: 18px; }
-.btn-sm {
-  display: flex; align-items: center; justify-content: center; padding: 5px 25px; cursor: pointer;
-  background: var(--bg-soft); border: 1px solid var(--border-color); border-radius: 4px;
-}
-.btn-sm:hover { background: var(--accent); }
-.icono-btn { width: 18px; height: 18px; display: block; }
-.btn-logout {
-  background: red; border: 1px solid rgba(255,255,255,0.35);
-  color: #fff; padding: 9px 42px; border-radius: 6px; cursor: pointer; font-size: 0.82rem;
-}
-.btn-logout:hover { background: #000; color: #ff0000; }
-.panel.light .header-bar { background: white; border-bottom: 1px solid var(--border-color); }
 
 /* CONTENT */
 .content {
@@ -494,53 +393,32 @@ async function handleLogout() {
 .btn-volver:hover { border-color: var(--accent); color: var(--accent); }
 h2 { font-size: 1.3rem; font-weight: 700; color: var(--text-main); margin: 0; }
 
-/* CONFIRMACIÓN */
-.confirmacion-container { display: flex; justify-content: center; align-items: flex-start; padding-top: 20px; }
-.confirmacion-card {
-  background: var(--bg-card); border: 1px solid var(--border-color);
-  border-radius: 16px; padding: 40px 48px; text-align: center;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.2); max-width: 420px; width: 100%;
+/* ALERTAS DE INTENTOS (solo ≤2) */
+.alerta-intentos {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; max-width: 420px;
+  padding: 12px 16px; border-radius: 10px;
+  font-size: 0.88rem; font-weight: 600; line-height: 1.4;
+  animation: pulso 1.8s ease-in-out infinite;
 }
-.confirmacion-icono { font-size: 3.5rem; margin-bottom: 12px; }
-.confirmacion-card h3 { font-size: 1.3rem; font-weight: 700; color: var(--text-main); margin-bottom: 6px; }
-.fecha-texto { font-size: 0.85rem; color: var(--text-soft); margin-bottom: 12px; text-transform: capitalize; }
-.confirmacion-pregunta { font-size: 1rem; color: var(--text-main); margin: 20px 0 24px; }
-.confirmacion-botones { display: flex; gap: 16px; justify-content: center; }
-
-/* BOTONES */
-.btn-si {
-  padding: 12px 32px; background: var(--accent); color: white; border: none;
-  border-radius: 8px; cursor: pointer; font-size: 1rem; font-weight: 600; transition: all 0.2s ease;
+.alerta-advertencia {
+  background: rgba(234, 179, 8, 0.12);
+  border: 1.5px solid rgba(234, 179, 8, 0.5);
+  color: #eab308;
 }
-.btn-si:hover { opacity: 0.88; transform: translateY(-1px); }
-.btn-no {
-  padding: 12px 32px; background: var(--bg-soft); color: var(--text-soft);
-  border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; font-size: 1rem; transition: all 0.2s ease;
+.alerta-critica {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1.5px solid rgba(239, 68, 68, 0.6);
+  color: #ef4444;
 }
-.btn-no:hover { border-color: var(--text-soft); color: var(--text-main); }
-
-/* GEO */
-.geo-status {
-  display: inline-flex; align-items: center; gap: 6px; font-size: 0.78rem;
-  padding: 5px 14px; border-radius: 20px; margin-bottom: 12px;
-  background: var(--bg-soft); color: var(--text-soft); border: 1px solid var(--border-color);
+.panel.light .alerta-advertencia { background: #fef9c3; color: #92400e; border-color: #fcd34d; }
+.panel.light .alerta-critica     { background: #fee2e2; color: #991b1b; border-color: #fca5a5; }
+.alerta-icono { font-size: 1.1rem; flex-shrink: 0; }
+.alerta-texto { flex: 1; }
+@keyframes pulso {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.75; }
 }
-.geo-ok       { background: rgba(24,196,64,0.1);  color: #18c440; border-color: rgba(24,196,64,0.3); }
-.geo-denegado { background: rgba(251,191,36,0.1); color: #d97706; border-color: rgba(251,191,36,0.3); }
-.geo-cargando { background: rgba(59,130,246,0.1); color: #3b82f6; border-color: rgba(59,130,246,0.3); }
-.geo-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; background: currentColor; opacity: 0.8; }
-
-/* INTENTOS */
-.intentos-bar {
-  display: flex; align-items: center; gap: 6px; font-size: 0.82rem;
-  color: var(--text-soft); width: 100%; max-width: 420px;
-}
-.intentos-label { margin-right: 4px; }
-.intento-dot { width: 12px; height: 12px; border-radius: 50%; transition: background 0.3s; }
-.dot-activo { background: #18c440; }
-.dot-usado  { background: rgba(239,68,68,0.5); }
-.intentos-num { margin-left: 4px; font-weight: 700; }
-.texto-rojo { color: #ef4444; }
 
 /* CÁMARA */
 .camara-container { display: flex; flex-direction: column; align-items: center; gap: 14px; }
@@ -551,24 +429,65 @@ h2 { font-size: 1.3rem; font-weight: 700; color: var(--text-main); margin: 0; }
 }
 .video { width: 100%; display: block; aspect-ratio: 4/3; transform: scaleX(-1); object-fit: cover; }
 
-.overlay-procesando {
-  position: absolute; inset: 0; background: rgba(0,0,0,0.55);
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 12px; color: #fff; font-size: 1rem; font-weight: 600;
-}
-.spinner {
-  width: 36px; height: 36px; border: 3px solid rgba(255,255,255,0.3);
-  border-top-color: #18c440; border-radius: 50%; animation: spin 0.8s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
 
 .guia-rostro { position: absolute; inset: 0; pointer-events: none; display: flex; align-items: center; justify-content: center; }
 .guia-svg { width: 90%; height: 90%; opacity: 0.9; }
 
-.instruccion { font-size: 0.9em; color: var(--text-soft); text-align: center; max-width: 420px; line-height: 1.5; transition: color 0.2s; }
-.instruccion-error { color: #ef4444 !important; font-weight: 600; }
-.instruccion-warn  { color: #d97706 !important; }
+/* MENSAJE DE ESTADO CON WRAPPER */
+.mensaje-estado-wrapper {
+  display: flex; align-items: flex-start; gap: 10px;
+  width: 100%; max-width: 420px;
+  padding: 12px 16px; border-radius: 10px;
+  border: 1.5px solid transparent;
+  transition: all 0.25s ease;
+}
+.mensaje-icono-estado {
+  font-size: 1.1rem; font-weight: 800; line-height: 1.4;
+  flex-shrink: 0; width: 20px; text-align: center;
+}
+.instruccion {
+  font-size: 0.92rem; line-height: 1.5; margin: 0;
+  transition: color 0.2s;
+}
 
+/* Variantes del mensaje */
+.estado-neutro {
+  background: var(--bg-soft);
+  border-color: var(--border-color);
+  color: var(--text-soft);
+}
+.estado-neutro .mensajeIcono { color: var(--text-soft); }
+
+.estado-error {
+  background: rgba(239, 68, 68, 0.10);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #ef4444;
+}
+.estado-error .instruccion { color: #ef4444; font-weight: 600; font-size: 0.95rem; }
+.estado-error .mensaje-icono-estado { color: #ef4444; }
+
+.estado-advertencia {
+  background: rgba(234, 179, 8, 0.10);
+  border-color: rgba(234, 179, 8, 0.4);
+  color: #d97706;
+}
+.estado-advertencia .instruccion { color: #d97706; font-weight: 600; }
+.estado-advertencia .mensaje-icono-estado { color: #d97706; }
+
+.estado-ok {
+  background: rgba(24, 196, 64, 0.10);
+  border-color: rgba(24, 196, 64, 0.4);
+  color: #18c440;
+}
+.estado-ok .instruccion { color: #18c440; font-weight: 600; }
+.estado-ok .mensaje-icono-estado { color: #18c440; }
+
+.panel.light .estado-neutro    { background: #f1f5f9; border-color: #e2e8f0; color: #64748b; }
+.panel.light .estado-error     { background: #fee2e2; border-color: #fca5a5; color: #dc2626; }
+.panel.light .estado-advertencia { background: #fef9c3; border-color: #fcd34d; color: #92400e; }
+.panel.light .estado-ok        { background: #dcfce7; border-color: #bbf7d0; color: #166534; }
+
+/* BOTÓN CAPTURAR */
 .btn-capturar {
   padding: 14px; background: var(--accent); color: white; border: none;
   border-radius: 10px; font-size: 1rem; font-weight: 600; cursor: pointer;
@@ -578,10 +497,14 @@ h2 { font-size: 1.3rem; font-weight: 700; color: var(--text-main); margin: 0; }
 .btn-capturar:disabled { opacity: 0.5; cursor: not-allowed; background: #6b7280; }
 
 .error-box {
-  background: rgba(239,68,68,0.1); color: #ef4444; border: 1px solid rgba(239,68,68,0.3);
-  padding: 12px 16px; border-radius: 10px; text-align: center; width: 100%; max-width: 420px; font-size: 0.9rem;
+  display: flex; align-items: center; gap: 8px;
+  background: rgba(239,68,68,0.1); color: #ef4444;
+  border: 1px solid rgba(239,68,68,0.3);
+  padding: 12px 16px; border-radius: 10px; text-align: left;
+  width: 100%; max-width: 420px; font-size: 0.9rem;
 }
 .panel.light .error-box { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
+.error-icono { font-size: 1rem; flex-shrink: 0; }
 
 /* RESULTADO */
 .resultado-container { display: flex; flex-direction: column; align-items: center; gap: 16px; }
@@ -594,20 +517,34 @@ h2 { font-size: 1.3rem; font-weight: 700; color: var(--text-main); margin: 0; }
 .resultado-info  { border-top: 4px solid #f59e0b; }
 .resultado-error { border-top: 4px solid #ef4444; }
 
-.resultado-icono { display: flex; justify-content: center; align-items: center; margin-bottom: 16px; }
-.img-resultado   { width: 80px; height: 80px; object-fit: contain; }
-.resultado-card h3 { font-size: 1.1rem; font-weight: 700; color: var(--text-main); margin-bottom: 12px; }
-.res-dato { color: var(--text-soft); font-size: 0.9rem; margin: 6px 0; }
-.res-dato strong { color: var(--text-main); }
+.resultado-emoji { font-size: 3.5rem; margin-bottom: 16px; line-height: 1; }
+.resultado-card h3 { font-size: 1.1rem; font-weight: 700; color: var(--text-main); margin-bottom: 16px; }
+
+/* Tabla de detalles del resultado */
+.resultado-detalles {
+  background: var(--bg-soft); border: 1px solid var(--border-color);
+  border-radius: 10px; overflow: hidden; margin-bottom: 14px;
+}
+.detalle-fila {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 9px 14px; font-size: 0.88rem; border-bottom: 1px solid var(--border-color);
+}
+.detalle-fila:last-child { border-bottom: none; }
+.detalle-label { color: var(--text-soft); }
+.detalle-valor { font-weight: 600; color: var(--text-main); }
 .texto-verde    { color: #18c440 !important; }
 .texto-amarillo { color: #d97706 !important; }
 
 .asistencia-badge {
-  display: inline-block; margin: 12px auto 0;
+  display: inline-block; margin: 0 auto 0;
   padding: 5px 16px; border-radius: 20px; font-size: 0.78rem; font-weight: 700;
 }
-.badge-cuenta    { background: rgba(24,196,64,0.15); color: #18c440; border: 1px solid rgba(24,196,64,0.3); }
-.badge-no-cuenta { background: rgba(251,191,36,0.15); color: #d97706; border: 1px solid rgba(251,191,36,0.3); }
+.badge-cuenta {
+  background: rgba(24, 196, 64, 0.15); color: #18c440; border: 1px solid rgba(24, 196, 64, 0.3);
+}
+.badge-no-cuenta {
+  background: rgba(251, 191, 36, 0.15); color: #65fd00; border: 1px solid rgba(251, 191, 36, 0.3);
+}
 .panel.light .badge-cuenta    { background: #dcfce7; color: #166534; border-color: #bbf7d0; }
 .panel.light .badge-no-cuenta { background: #fef9c3; color: #854d0e; border-color: #fde68a; }
 
@@ -617,24 +554,24 @@ h2 { font-size: 1.3rem; font-weight: 700; color: var(--text-main); margin: 0; }
   border: 1px solid rgba(24,196,64,0.25); border-radius: 20px; font-size: 0.82rem; color: #18c440;
 }
 .panel.light .ubicacion-resultado { background: #f0fdf4; color: #166534; border-color: #bbf7d0; }
-.ubi-icon { font-size: 0.9rem; }
 
+/* BOTONES */
+.btn-si {
+  padding: 12px 32px; background: var(--accent); color: white; border: none;
+  border-radius: 8px; cursor: pointer; font-size: 1rem; font-weight: 600; transition: all 0.2s ease;
+}
+.btn-si:hover { opacity: 0.88; transform: translateY(-1px); }
+.btn-no {
+  padding: 12px 32px; background: var(--bg-soft); color: var(--text-soft);
+  border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; font-size: 1rem; transition: all 0.2s ease;
+}
+.btn-no:hover { border-color: var(--text-soft); color: var(--text-main); }
 .resultado-botones { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
 
 /* RESPONSIVE */
 @media (max-width: 768px) {
-  .header-bar { flex-direction: column; align-items: flex-start; gap: 10px; padding: 12px 16px; }
-  .header-right { width: 100%; justify-content: space-between; }
-  .logo { width: 110px; height: auto; }
-  .sistema-nombre { font-size: 0.8rem; }
-  .nombre-chip { padding: 6px 10px; font-size: 0.75rem; }
-  .btn-logout { padding: 6px 12px; font-size: 0.75rem; }
   .content { padding: 16px; gap: 16px; }
   h2 { font-size: 1.1rem; }
-  .confirmacion-card { padding: 28px 20px; }
-  .confirmacion-card h3 { font-size: 1.1rem; }
-  .confirmacion-botones { flex-direction: column-reverse; gap: 10px; }
-  .btn-si, .btn-no { width: 100%; padding: 14px; }
   .btn-capturar { padding: 14px; font-size: 0.95rem; }
   .resultado-card { padding: 28px 20px; }
   .resultado-botones { flex-direction: column; width: 100%; max-width: 420px; }

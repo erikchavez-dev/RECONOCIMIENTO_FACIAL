@@ -1,0 +1,22 @@
+export const CURIOSIDADES = [
+    { t: 'Las hormigas nunca duermen en toda su vida.', a: 'Naturaleza' },
+    { t: 'El corazón del colibrí late 1200 veces por minuto.', a: 'Ciencia' },
+    { t: 'Las vacas tienen mejores amigas y se estresan sin ellas.', a: 'Naturaleza' },
+    { t: 'El pulpo tiene tres corazones y sangre azul.', a: 'Biología' },
+    { t: 'Los pingüinos proponen matrimonio con una piedra.', a: 'Animales' },
+    { t: 'El ojo del avestruz es más grande que su cerebro.', a: 'Ciencia' },
+    { t: 'Las abejas pueden reconocer rostros humanos.', a: 'Naturaleza' },
+    { t: 'El Sol representa el 99% de la masa del sistema solar.', a: 'Espacio' },
+    { t: 'Los elefantes son los únicos que no pueden saltar.', a: 'Biología' },
+    { t: 'Una nube promedio pesa tanto como 100 elefantes.', a: 'Ciencia' },
+    { t: 'Los gatos duermen el 70% de sus vidas.', a: 'Mascotas' },
+    { t: 'El agua caliente se congela más rápido que la fría.', a: 'Física' },
+    { t: 'Los delfines se llaman entre ellos por nombres.', a: 'Animales' },
+    { t: 'La Venus de Milo no tiene brazos por un accidente.', a: 'Historia' },
+    { t: 'El teclado QWERTY se diseñó para ralentizar la escritura.', a: 'Tecnología' },
+    { t: 'La miel es el único alimento que nunca se echa a perder.', a: 'Cocina' },
+    { t: 'Los caballitos de mar eligen pareja para toda la vida.', a: 'Biología' },
+    { t: 'Existen más estrellas que granos de arena en la Tierra.', a: 'Espacio' },
+    { t: 'El caracol puede dormir por tres años seguidos.', a: 'Naturaleza' },
+    { t: 'Tu nariz puede recordar más de 50,000 olores distintos.', a: 'Cuerpo Humano' }
+];

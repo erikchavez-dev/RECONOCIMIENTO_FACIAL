@@ -7,7 +7,7 @@
     <div class="login-card">
 
       <!-- LOGO -->
-      <img src="/logo-3.webp" alt="Logo Municipalidad" class="logo" />
+      <img src="/logo-municipalidad.webp" alt="Logo Municipalidad" class="logo" />
       <h2>Sistema de Control de Asistencia</h2>
       <p class="subtitulo">Municipalidad Provincial de Cajamarca</p>
 
@@ -269,6 +269,7 @@ h2 {
 
 .btn-ingresar:hover:not(:disabled) {
   background-color: #0004ff;
+  transform: scale(0.95);
 }
 
 .btn-ingresar:disabled {
@@ -279,23 +280,18 @@ h2 {
 .btn-inicio {
   width: 100%;
   padding: 12px;
-  background-color: #0be5ec;
-  color: rgb(3, 3, 3);
+  background: linear-gradient(135deg, #0c9b2d 20%, #07551a 80%);
+  color: #ffffff;
   font-weight: 600;
   border: none;
   border-radius: 6px;
   font-size: 1rem;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background 0.5s;
 }
-
-.btn-inicio:hover:not(:disabled) {
-  background-color: #00ffff;
-}
-
-.btn-inicio:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
+.btn-inicio:hover {
+  color: #ffffff;
+  transform: scale(0.95);
 }
 
 .input-wrapper {

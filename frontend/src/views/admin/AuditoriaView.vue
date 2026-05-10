@@ -248,8 +248,8 @@ function getBadgeClass(accion) {
 .input-buscar { width: 100%; }
 
 .btn-limpiar {
-  padding: 8px 14px;
-  background: #da3939;
+  padding: 9px 15px;
+  background: #ff0000;
   border: 1px solid var(--border, #ddd);
   border-radius: 6px;
   cursor: pointer;
@@ -259,13 +259,13 @@ function getBadgeClass(accion) {
 }
 
 .btn-limpiar:hover {
-  background: #ff0000;
+  background: #cc0202;
   color: #ffffff;
   border-color: #fecaca;
 }
 
 .btn-actualizar {
-  background: #08c22a;
+  background: #1a3a6b;
   color: rgb(255, 255, 255);
   font-size: 1em;
   font-weight: 600;
@@ -277,7 +277,7 @@ function getBadgeClass(accion) {
 }
 
 .btn-actualizar:hover {
-  background: #4a7ac2;
+  background: #000000;
   color: #ffffff;
 }
 .btn-actualizar disabled {

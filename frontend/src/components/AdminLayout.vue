@@ -13,7 +13,7 @@
         <router-link to="/admin/dashboard"    class="menu-item"><img :src="iconoDashboard"    class="icono" /> Dashboard</router-link>
         <router-link to="/admin/trabajadores" class="menu-item"><img :src="iconoTrabajadores" class="icono" /> Trabajadores</router-link>
         <router-link to="/admin/usuarios"     class="menu-item"><img :src="iconoUsuarios"     class="icono" /> Usuarios</router-link>
-        <router-link to="/admin/marcaciones"  class="menu-item"><img :src="iconoMarcaciones"  class="icono" /> Marcaciones de hoy</router-link>
+        <router-link to="/admin/marcaciones"  class="menu-item"><img :src="iconoMarcaciones"  class="icono" /> Marcaciones</router-link>
         <router-link to="/admin/asistencia"   class="menu-item"><img :src="iconoAsistencia"  class="icono" /> Asistencia</router-link>
         <router-link to="/admin/reportes"     class="menu-item"><img :src="iconoReportes"     class="icono" /> Reportes</router-link>
         <router-link to="/admin/auditoria"    class="menu-item"><img :src="iconoAuditoria"    class="icono" /> Auditoría</router-link>
@@ -95,8 +95,8 @@ function toggleSidebar() {
 
 /* SIDEBAR — fijo, no hace scroll */
 .sidebar {
-  width: 260px;
-  min-width: 260px;
+  width: 240px;
+  min-width: 240px;
   background: #1a3a6b;
   display: flex;
   flex-direction: column;
@@ -127,7 +127,7 @@ function toggleSidebar() {
 /* MENÚ — ocupa el espacio disponible, con scroll interno si necesita */
 .menu {
   flex: 1;
-  padding: 16px 0;
+  padding: 12px 0;
   display: flex;
   flex-direction: column;
   overflow-y: auto;
@@ -136,8 +136,8 @@ function toggleSidebar() {
 .divid-menu {
   padding: 6px 20px 2px;
   color: #fff;
-  font-size: 0.72rem;
-  font-weight: 700;
+  font-size: 0.98em;
+  font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-top: 8px;
@@ -147,7 +147,7 @@ function toggleSidebar() {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 9px 20px;
+  padding: 8px 22px;
   color: #ffffff;
   text-decoration: none;
   font-size: 0.95em;
@@ -191,17 +191,17 @@ function toggleSidebar() {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: #ffffff1a;
+  background: #ff0000;
   border: 1px solid rgba(255,255,255,0.3);
   color: #fff;
   padding: 10px 16px;
   border-radius: 6px;
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: 0.92rem;
   transition: all 0.2s;
 }
 .btn-logout:hover {
-  background-color: #5a1818;
+  background-color: #ad0404;
   color: #ffffff;
   border-color: 1px solid #ff0000;
 }

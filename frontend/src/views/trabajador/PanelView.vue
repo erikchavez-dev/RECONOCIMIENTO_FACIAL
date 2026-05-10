@@ -1,24 +1,9 @@
 <template>
-  <div class="panel" :class="{ light: !theme.oscuro }" :style="bgStyle">
+  <div class="panel" :class="{ light: !theme.oscuro }">
     <div class="bg-overlay"></div>
 
     <!-- HEADER -->
-    <header class="header-bar">
-      <div class="header-left">
-        <img src="/sgd_logo.webp" alt="Logo" class="logo" />
-        <span class="sistema-nombre">Sistema de Control de Asistencia</span>
-      </div>
-      <div class="header-right">
-        <span class="nombre-chip">
-          <img :src="iconoPerfil" class="icono-perfil" />
-          {{auth.usuario?.nombre_completo }}
-        </span>
-       <button @click="theme.toggle()" class="btn-sm" :title="theme.oscuro ? 'Tema claro' : 'Tema oscuro'">
-          <img :src="theme.oscuro ? iconoSol : iconoLuna" alt="Icono Tema" class="icono-btn" />
-        </button>
-        <button @click="handleLogout" class="btn-logout">⬅ Salir</button>
-      </div>
-    </header>
+    <AppHeader />
 
     <main class="content">
 
@@ -101,7 +86,7 @@
                 <div v-if="!clima" class="slide-loading">Cargando clima...</div>
                 <template v-else>
                   <div class="clima-row">
-                    <span class="clima-icon">{{ clima.icono }}</span>
+                    <img :src="clima.icono" class="clima-icon" />
                     <div class="clima-main">
                       <span class="clima-temp">{{ clima.temperatura }}°C</span>
                       <span class="clima-desc">{{ clima.descripcion }}</span>
@@ -212,31 +197,37 @@
 
 <script setup>
 import imagenReconocimiento from '@/assets/icon-reconocimiento-facial.svg'
-import imagenHistorial from '@/assets/lista-historial.webp'
-import imagenAsistencia from '@/assets/asistencia.webp'
-import iconoPerfil from '@/assets/icon-perfil.svg'
-import iconoLuna from '@/assets/icon-luna.svg'
-import iconoSol from '@/assets/icon-sol.svg'
-import relojArena from '@/assets/reloj-de-arena.webp'
-import iconoAlerta from '@/assets/alerta.webp'
-import iconoCheck from '@/assets/icon-check.svg'
+import imagenHistorial      from '@/assets/lista-historial.webp'
+import imagenAsistencia     from '@/assets/asistencia.webp'
+import relojArena           from '@/assets/reloj-de-arena.webp'
+import iconoAlerta          from '@/assets/alerta.webp'
+import iconoCheck           from '@/assets/icon-check.svg'
 
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
 import { useThemeStore } from '@/stores/theme'
+import { useAuthStore }  from '@/stores/auth'
+import { useClima }      from '@/composables/useClima'
+import { useCalendario } from '@/composables/useCalendario'
+import AppHeader from '@/components/layout/AppHeader.vue'
+import { FRASES } from '@/assets/data/frases'
+import { CURIOSIDADES } from '@/assets/data/curiosidades'
 import api from '@/services/api'
 
-const router = useRouter()
-const auth   = useAuthStore()
-const theme  = useThemeStore()
+const auth  = useAuthStore()
+const theme = useThemeStore()
+// handleLogout no se usa en el template de PanelView directamente —
+// lo maneja AppHeader internamente
+
+const { clima, cargarClima }                              = useClima()
+const { nombreMes, anioCalendario, diasCalendario,
+        cargarFeriados, mesAnterior, mesSiguiente }       = useCalendario()
 
 // ── Saludo ───────────────────────────────────────────────────
 const saludo = computed(() => {
   const h = new Date().getHours()
-  if (h < 12) return 'Buen día'
-  if (h < 18) return 'Buena tarde'
-  return 'Buena noche'
+  if (h < 12) return 'Buenos días'
+  if (h < 18) return 'Buenas tardes'
+  return 'Buenas noches'
 })
 const fechaHoy = computed(() =>
   new Date().toLocaleDateString('es-PE', {
@@ -244,159 +235,17 @@ const fechaHoy = computed(() =>
   })
 )
 
-// ── FRASES ───────────────────────────────────────────────────
-const FRASES = [
-  { t: 'La disciplina es el puente entre metas y logros.', a: 'Jim Rohn' },
-  { t: 'El éxito es repetir pequeños esfuerzos.', a: 'Robert Collier' },
-  { t: 'Haz de cada día tu obra maestra.', a: 'John Wooden' },
-  { t: 'La puntualidad es clave del éxito.', a: 'Autor' },
-  { t: 'El trabajo duro vence al talento.', a: 'Tim Notke' },
-  { t: 'No cuentes los días, haz que cuenten.', a: 'Muhammad Ali' },
-  { t: 'El éxito es la suma de pequeños esfuerzos.', a: 'R. Collier' },
-  { t: 'El futuro pertenece a los que se preparan hoy.', a: 'Malcolm X' },
-]
+// para la frase aleatoria
 const frase = ref('')
 const fraseAutor = ref('')
+
+const CONTENIDO = [...FRASES, ...CURIOSIDADES]
+
 function cargarFrase() {
-  const f = FRASES[Math.floor(Math.random() * FRASES.length)]
+  const f = CONTENIDO[Math.floor(Math.random() * CONTENIDO.length)]
+
   frase.value = f.t
   fraseAutor.value = f.a
-}
-
-// ── CLIMA ────────────────────────────────────────────────────
-const clima = ref(null)
-const WMO = {
-  0:{d:'Despejado',i:'☀️'}, 1:{d:'Mayormente despejado',i:'🌤️'},
-  2:{d:'Parcialmente nublado',i:'⛅'}, 3:{d:'Nublado',i:'☁️'},
-  45:{d:'Neblina',i:'🌫️'}, 51:{d:'Llovizna',i:'🌦️'},
-  61:{d:'Lluvia ligera',i:'🌧️'}, 63:{d:'Lluvia moderada',i:'🌧️'},
-  80:{d:'Chubascos',i:'🌦️'}, 95:{d:'Tormenta',i:'⛈️'}
-}
-
-async function cargarClima() {
-  try {
-    const CACHE_KEY  = 'weather_cache'
-    const CACHE_TIME = 10 * 60 * 1000
-    const cacheRaw   = localStorage.getItem(CACHE_KEY)
-
-    if (cacheRaw) {
-      const cache = JSON.parse(cacheRaw)
-      if (Date.now() - cache.timestamp < CACHE_TIME) {
-        const c = cache.data.current
-        const w = WMO[c.weathercode] || { d: 'Variable', i: '🌡️' }
-        clima.value = {
-          temperatura: Math.round(c.temperature_2m), humedad: c.relative_humidity_2m,
-          viento: Math.round(c.windspeed_10m), sensacion: Math.round(c.apparent_temperature),
-          lluvia: c.precipitation ?? 0, descripcion: w.d, icono: w.i,
-        }
-        return
-      }
-    }
-
-    function getLocation() {
-      return new Promise((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 })
-      })
-    }
-    let lat, lon
-    try {
-      const position = await getLocation()
-      lat = position.coords.latitude
-      lon = position.coords.longitude
-    } catch {
-      return await cargarClimaFallback()
-    }
-
-    const url  = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,weathercode,windspeed_10m,apparent_temperature,precipitation&timezone=auto`
-    const res  = await fetch(url)
-    const data = await res.json()
-    localStorage.setItem(CACHE_KEY, JSON.stringify({ data, timestamp: Date.now() }))
-    const c = data.current
-    const w = WMO[c.weathercode] || { d: 'Variable', i: '🌡️' }
-    clima.value = {
-      temperatura: Math.round(c.temperature_2m), humedad: c.relative_humidity_2m,
-      viento: Math.round(c.windspeed_10m), sensacion: Math.round(c.apparent_temperature),
-      lluvia: c.precipitation ?? 0, descripcion: w.d, icono: w.i,
-    }
-  } catch {
-    await cargarClimaFallback()
-  }
-}
-
-async function cargarClimaFallback() {
-  try {
-    const url  = 'https://api.open-meteo.com/v1/forecast?latitude=-7.1518&longitude=-78.5117&current=temperature_2m,relative_humidity_2m,weathercode,windspeed_10m,apparent_temperature,precipitation&timezone=America%2FLima'
-    const res  = await fetch(url)
-    const data = await res.json()
-    const c    = data.current
-    const w    = WMO[c.weathercode] || { d: 'Variable', i: '🌡️' }
-    clima.value = {
-      temperatura: Math.round(c.temperature_2m), humedad: c.relative_humidity_2m,
-      viento: Math.round(c.windspeed_10m), sensacion: Math.round(c.apparent_temperature),
-      lluvia: c.precipitation ?? 0, descripcion: w.d, icono: w.i,
-    }
-  } catch {
-    clima.value = { temperatura: '--', humedad: '--', viento: '--', sensacion: '--', lluvia: 0, descripcion: 'Sin datos', icono: '🌡️' }
-  }
-}
-
-// ── CALENDARIO ───────────────────────────────────────────────
-const mesCalendario  = ref(new Date().getMonth())
-const anioCalendario = ref(new Date().getFullYear())
-const MESES_ES       = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
-const nombreMes      = computed(() => MESES_ES[mesCalendario.value])
-
-const feriadosCache = {}
-const feriadosSet   = ref(new Set())
-
-async function cargarFeriados(anio) {
-  if (feriadosCache[anio]) { feriadosSet.value = feriadosCache[anio]; return }
-  try {
-    const res  = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${anio}/PE`)
-    const data = await res.json()
-    const set  = new Set()
-    const names = {}
-    data.forEach(f => { set.add(f.date); names[f.date] = f.localName })
-    feriadosCache[anio] = { set, names }
-    feriadosSet.value   = { set, names }
-  } catch {
-    feriadosSet.value = { set: new Set(), names: {} }
-  }
-}
-
-const diasCalendario = computed(() => {
-  const primer = new Date(anioCalendario.value, mesCalendario.value, 1)
-  const ultimo = new Date(anioCalendario.value, mesCalendario.value + 1, 0)
-  const inicio = (primer.getDay() + 6) % 7
-  const hoy    = new Date()
-  const hoyStr = `${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,'0')}-${String(hoy.getDate()).padStart(2,'0')}`
-  const dias   = []
-  for (let i = 0; i < inicio; i++) dias.push({ vacio: true })
-  for (let d = 1; d <= ultimo.getDate(); d++) {
-    const mm        = String(mesCalendario.value + 1).padStart(2, '0')
-    const dd        = String(d).padStart(2, '0')
-    const fs        = `${anioCalendario.value}-${mm}-${dd}`
-    const diaSemana = new Date(anioCalendario.value, mesCalendario.value, d).getDay()
-    const esFeriado = feriadosSet.value?.set?.has(fs)
-    dias.push({
-      num: d, vacio: false, esHoy: fs === hoyStr,
-      feriado: esFeriado,
-      nombreFeriado: esFeriado ? (feriadosSet.value?.names?.[fs] || 'Feriado') : '',
-      domingo: diaSemana === 0,
-    })
-  }
-  return dias
-})
-
-function mesAnterior() {
-  if (mesCalendario.value === 0) { mesCalendario.value = 11; anioCalendario.value-- }
-  else mesCalendario.value--
-  cargarFeriados(anioCalendario.value)
-}
-function mesSiguiente() {
-  if (mesCalendario.value === 11) { mesCalendario.value = 0; anioCalendario.value++ }
-  else mesCalendario.value++
-  cargarFeriados(anioCalendario.value)
 }
 
 // ── ESTADO HOY ───────────────────────────────────────────────
@@ -495,15 +344,9 @@ onMounted(async () => {
   cargarEstadoHoy()
   iniciarSliderAuto()
 })
-
 onUnmounted(() => {
   if (sliderInterval) clearInterval(sliderInterval)
 })
-
-async function handleLogout() {
-  await auth.logout()
-  router.push('/login')
-}
 </script>
 
 <style scoped>
@@ -525,6 +368,8 @@ async function handleLogout() {
   --text-soft: #64748b;
   --border-color: #e2e8f0;
   --accent: #2563eb;
+  --black: #000000;
+  --azul: #142d53;
 }
 
 .panel {
@@ -543,61 +388,107 @@ async function handleLogout() {
 
 /* TEMA CLARO overrides */
 .panel.light .accion-btn:hover {
-  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
   transform: translateX(5px);
 }
-.panel.light .slider-arrows button { background: #e2e8f0; color: #1e293b; }
-.panel.light .slider-arrows button:hover { background: var(--accent); color: white; }
-.panel.light .content { background: var(--bg-main); }
-.panel.light .header-bar { background: white; border-bottom: 1px solid var(--border-color); }
-.panel.light .accion-btn,
+
+.panel.light .slider-arrows button {
+  background: #e2e8f0;
+  color: #1e293b;
+}
+
+.panel.light .slider-arrows button:hover {
+  background: var(--accent);
+  color: white;
+}
+
+.panel.light .content {
+  background: var(--bg-main);
+}
+
+.panel.light .header-bar {
+  background: white;
+  border-bottom: 1px solid var(--border-color);
+}
+
 .panel.light .slider-outer,
-.panel.light .frase-wrap { box-shadow: 0 4px 20px rgba(0,0,0,0.04); border: 1px solid var(--border-color); }
-.panel.light .accion-btn.principal { background: #22c55e; color: white; }
-.panel.light .accion-btn.principal:hover { background: #16a34a; }
-.panel.light .accion-btn { background: white; color: var(--text-main); }
-.panel.light .accion-btn:hover { border-color: var(--accent); transform: translateX(5px); }
-.panel.light .slider-outer { background: white; }
-.panel.light .stab { color: var(--text-soft); }
-.panel.light .stab.active { color: var(--accent); border-bottom: 2px solid var(--accent); }
-.panel.light .nombre-grande { color: var(--text-main); }
-.panel.light .saludo-txt, .panel.light .fecha-sub { color: var(--text-main); }
-.panel.light .frase-wrap { background: #c7c9ca; border-left: 4px solid var(--accent); }
-.panel.light .frase-txt { color: var(--text-main); }
-.panel.light .frase-autor { color: var(--text-soft); }
-.panel.light .ce-item { background: #f8fafc; border: 1px solid var(--border-color); }
-.panel.light .accion-img { filter: none; }
+.panel.light .frase-wrap {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+  border: 1px solid var(--border-color);
+}
+
+.panel.light .accion-btn.principal {
+  background: #1a3a6b;
+  color: white;
+}
+
+.panel.light .accion-btn.principal:hover {
+  background: #1a3a6b;
+}
+
+.panel.light .accion-btn {
+  background: white;
+  color: var(--text-main);
+}
+
+.panel.light .accion-btn:hover {
+  border-color: var(--accent);
+  transform: translateX(5px);
+}
+
+.panel.light .slider-outer {
+  background: white;
+}
+
+.panel.light .stab {
+  color: var(--text-soft);
+}
+
+.panel.light .stab.active {
+  color: var(--accent);
+  border-bottom: 2px solid var(--accent);
+}
+
+.panel.light .nombre-grande {
+  color: var(--black);
+}
+
+.panel.light .saludo-txt,
+.panel.light .fecha-sub {
+  color: var(--text-main);
+}
+
+.panel.light .frase-wrap {
+  background: #c7c9ca;
+  border-left: 4px solid var(--accent);
+}
+
+.panel.light .frase-txt {
+  color: var(--text-main);
+}
+
+.panel.light .frase-autor {
+  color: var(--text-soft);
+}
+
+.panel.light .ce-item {
+  background: #f8fafc;
+  border: 1px solid var(--border-color);
+}
+
+.panel.light .accion-img {
+  filter: none;
+}
+
 .panel.light .slide-content,
 .panel.light .slider-tabs,
-.panel.light .ce-item { background: var(--text-main); }
-.panel.light .est-fila { background: #192775; }
+.panel.light .ce-item {
+  background: var(--azul);
+}
 
-/* ── HEADER ── */
-.header-bar {
-  position: relative; z-index: 10;
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 12px 28px; border-bottom: 2px solid var(--accent); background: var(--bg-card);
+.panel.light .est-fila {
+  background: #192775;
 }
-.header-left { display: flex; align-items: center; gap: 10px; }
-.header-right { display: flex; align-items: center; gap: 10px; }
-.logo { width: 150px; height: 50px; object-fit: contain; }
-.sistema-nombre { color: var(--text-main); font-weight: 600; font-size: 0.95rem; opacity: 0.9; }
-.nombre-chip {
-  display: flex; align-items: center; gap: 6px; color: white;
-  font-size: 0.82rem; background: rgba(255,255,255,0.1); padding: 9px 35px; border-radius: 6px;
-}
-.icono-perfil { width: 18px; height: 18px; }
-.btn-sm {
-  display: flex; align-items: center; justify-content: center;
-  padding: 5px 25px; cursor: pointer; background: #232324; border: 1px solid #ddd; border-radius: 4px;
-}
-.btn-sm:hover { background: #ffffff; }
-.icono-btn { width: 18px; height: 18px; display: block; }
-.btn-logout {
-  background: red; border: 1px solid rgba(255,255,255,0.35);
-  color: #ffffff; padding: 9px 42px; border-radius: 6px; cursor: pointer; font-size: 0.82rem;
-}
-.btn-logout:hover { background: #000000; color: #ff0000; }
 
 /* ── CONTENT ── */
 .content {
@@ -608,50 +499,197 @@ async function handleLogout() {
 
 /* ── TOP ── */
 .top-section {
-  display: flex; align-items: flex-start; justify-content: space-between; gap: 20px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
 }
-.textos-usuario { flex: 1; text-align: center; }
-.saludo-txt { font-size: 1em; letter-spacing: 1px; text-transform: uppercase; color: var(--text-soft); margin-bottom: 4px; }
-.nombre-grande { font-size: 2.3rem; font-weight: 700; color: white; line-height: 1; margin-bottom: 4px; text-shadow: 0 2px 8px rgba(0,0,0,0.3); }
-.fecha-sub { font-size: 0.93em; color: var(--text-soft); text-transform: capitalize; margin-bottom: 12px; }
-.frase-wrap {
-  flex: 0 1 410px; background: var(--bg-soft); border-radius: 10px;
-  padding: 10px 18px; border-left: 3px solid var(--accent); text-align: left; margin: 0;
-}
-.frase-txt {
-  font-size: 1.08em; color: rgba(255,255,255,0.85); font-style: italic; line-height: 1;
-  margin: 0; display: block; overflow: hidden; display: -webkit-box;
-  -webkit-box-orient: vertical; -webkit-line-clamp: 5; line-clamp: 5;
-}
-.frase-autor { font-size: 0.92em; color: rgba(255,255,255,0.5); display: block; margin-top: 4px; }
 
+.textos-usuario {
+  flex: 1;
+  text-align: center;
+}
+
+.saludo-txt {
+  font-size: 1.08em;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text-soft);
+  margin-bottom: 4px;
+}
+
+.nombre-grande {
+  font-size: 2.3rem;
+  font-weight: 700;
+  color: white;
+  line-height: 1;
+  margin-bottom: 4px;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.fecha-sub {
+  font-size: 0.93em;
+  color: var(--text-soft);
+  text-transform: capitalize;
+  margin-bottom: 12px;
+}
+
+.frase-wrap {
+  flex: 0 1 410px;
+  background: var(--bg-soft);
+  border-radius: 10px;
+  padding: 17px 18px;
+  border-left: 3px solid var(--accent);
+  text-align: left;
+  margin: 0;
+}
+
+.frase-txt {
+  font-size: 1.08em;
+  color: rgba(255, 255, 255, 0.85);
+  font-style: italic;
+  line-height: 1;
+  margin: 0;
+  display: block;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5;
+  line-clamp: 5;
+}
+
+.frase-autor {
+  font-size: 0.92em;
+  color: rgba(255, 255, 255, 0.5);
+  display: block;
+  margin-top: 4px;
+}
 /* ── MAIN LAYOUT ── */
 .main-layout { display: flex; gap: 60px; flex: 1; align-items: stretch; justify-content: space-between; }
 
 /* ── BOTONES IZQUIERDA ── */
-.left-col { width: 32%; display: flex; flex-direction: column; gap: 12px; justify-content: center; }
-.accion-btn {
-  display: flex; align-items: center; gap: 14px; padding: 16px 18px; border-radius: 14px;
-  background: var(--bg-card); color: white; border: 1px solid var(--border-color);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.5); cursor: pointer; transition: all 0.2s ease; text-decoration: none;
+.left-col {
+  width: 32%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  justify-content: center;
 }
-.accion-btn:hover { background: #1c1c1f; border-color: #18c440; box-shadow: 0 0 15px rgba(24,196,64,0.2); transform: translateX(5px); }
-.accion-btn.principal { background: #18c440; border-color: transparent; color: #0a0a0b; }
-.accion-btn.principal:hover { background: white; transform: translateX(5px) scale(1.01); box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
-.accion-btn.principal .ab-info h4, .accion-btn.principal .ab-info p, .accion-btn.principal .arrow { color: #0a0a0b; }
-.accion-icon { width: 44px; height: 44px; border-radius: 11px; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; flex-shrink: 0; }
-.accion-icon.azul { background: #041a61; color: white; }
-.accion-icon.verde { background: rgba(34,197,94,0.2); }
-.accion-icon.naranja { background: rgba(251,146,60,0.2); }
-.accion-btn.principal .accion-icon.azul { background: #041a61; }
-.accion-img { width: 30px; height: 30px; object-fit: contain; border-radius: 6px; filter: brightness(0) invert(1); }
-.ab-info { flex: 1; }
-.ab-info h4 { font-size: 1.15em; font-weight: 600; margin: 0 0 2px; }
-.ab-info p { font-size: 0.92em; font-weight: 500; opacity: 0.7; margin: 0; }
-.accion-btn.principal .ab-info h4 { color: #041a61; }
-.accion-btn.principal .ab-info p { color: #041a61; opacity: 0.65; }
-.arrow { font-size: 1rem; opacity: 0.4; flex-shrink: 0; margin-left: auto; }
-.accion-btn.principal .arrow { opacity: 0.4; color: #1a3a6b; }
+
+.accion-btn {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: var(--bg-card);
+  color: white;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.accion-btn:hover {
+  background: #1c1c1f;
+  border-color: #1a3a6b;
+  box-shadow: 0 0 15px rgba(26, 58, 107, 0.2);
+  transform: translateX(5px);
+}
+
+.accion-btn.principal {
+  background: #1a3a6b;
+  border-color: transparent;
+  color: #0a0a0b;
+}
+
+.accion-btn.principal:hover {
+  background: white;
+  transform: translateX(5px) scale(1.01);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+.accion-btn.principal .ab-info h4,
+.accion-btn.principal .ab-info p,
+.accion-btn.principal .arrow {
+  color: #0a0a0b;
+}
+
+.accion-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  flex-shrink: 0;
+}
+
+.accion-icon.azul {
+  background: #041a61;
+  color: white;
+}
+
+.accion-icon.verde {
+  background: rgba(34, 197, 94, 0.2);
+}
+
+.accion-icon.naranja {
+  background: rgba(251, 146, 60, 0.2);
+}
+
+.accion-btn.principal .accion-icon.azul {
+  background: #1a3a6b;
+}
+
+.accion-img {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+  border-radius: 6px;
+  filter: brightness(0) invert(1);
+}
+
+.ab-info {
+  flex: 1;
+}
+
+.ab-info h4 {
+  font-size: 1.15em;
+  font-weight: 600;
+  margin: 0 0 2px;
+}
+
+.ab-info p {
+  font-size: 0.92em;
+  font-weight: 500;
+  opacity: 0.7;
+  margin: 0;
+}
+
+.accion-btn.principal .ab-info h4 {
+  color: #ffffff;
+}
+
+.accion-btn.principal .ab-info p {
+  color: #ffffff;
+  opacity: 0.65;
+}
+
+.arrow {
+  font-size: 1rem;
+  opacity: 0.4;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.accion-btn.principal .arrow {
+  opacity: 0.4;
+  color: #1a3a6b;
+}
 
 /* ── SLIDER ── */
 .right-col { flex: 1; min-height: 320px; }
@@ -728,12 +766,6 @@ async function handleLogout() {
 
 /* ── RESPONSIVE ── */
 @media (max-width: 768px) {
-  .header-bar { flex-direction: column; align-items: flex-start; gap: 10px; padding: 12px 16px; }
-  .header-right { width: 100%; justify-content: space-between; }
-  .logo { width: 110px; height: auto; }
-  .sistema-nombre { font-size: 0.8rem; }
-  .nombre-chip { padding: 6px 10px; font-size: 0.75rem; }
-  .btn-logout { padding: 6px 12px; font-size: 0.75rem; }
   .content { padding: 16px; gap: 16px; }
   .top-section { flex-direction: column; align-items: stretch; gap: 12px; }
   .frase-wrap { width: 100%; font-size: 0.9rem; max-height: 70px; }

@@ -1,5 +1,6 @@
 from django.http import JsonResponse
 from apps.configuracion.models import ConfiguracionSistema
+from apps.marcaciones.ip_service import ip_en_rango, get_client_ip
 
 
 class ControlIPMiddleware:
@@ -22,9 +23,16 @@ class ControlIPMiddleware:
                     ips_autorizadas = config.get_ips_autorizadas()
 
                     if ips_autorizadas:
-                        ip_cliente = self._obtener_ip(request)
+                        ip_cliente = get_client_ip(request)
 
-                        if ip_cliente not in ips_autorizadas:
+                        # Usar ip_en_rango para soportar IPs exactas,
+                        # rangos CIDR (192.168.1.0/24) y wildcards (192.168.1.*)
+                        autorizada = any(
+                            ip_en_rango(ip_cliente, rango)
+                            for rango in ips_autorizadas
+                        )
+
+                        if not autorizada:
                             return JsonResponse(
                                 {
                                     'error': 'Acceso denegado. Su IP no está autorizada para registrar marcaciones',
@@ -37,12 +45,3 @@ class ControlIPMiddleware:
 
         response = self.get_response(request)
         return response
-
-    def _obtener_ip(self, request):
-        # Obtener IP real considerando proxies
-        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-        if x_forwarded_for:
-            ip = x_forwarded_for.split(',')[0].strip()
-        else:
-            ip = request.META.get('REMOTE_ADDR', '0.0.0.0')
-        return ip

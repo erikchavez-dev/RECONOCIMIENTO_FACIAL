@@ -1,27 +1,13 @@
 <template>
   <div class="panel" :class="{ light: !theme.oscuro }">
 
-    <header class="header-bar">
-      <div class="header-left">
-        <img src="/sgd_logo.webp" alt="Logo" class="logo" />
-        <span class="sistema-nombre">Sistema de Control de Asistencia</span>
-      </div>
-      <div class="header-right">
-        <span class="nombre-chip">
-          <img :src="iconoPerfil" class="icono-perfil" />
-          {{ auth.usuario?.nombre_completo }}
-        </span>
-        <button @click="theme.toggle()" class="btn-sm" :title="theme.oscuro ? 'Tema claro' : 'Tema oscuro'">
-          <img :src="theme.oscuro ? iconoSol : iconoLuna" alt="Icono Tema" class="icono-btn" />
-        </button>
-        <button @click="handleLogout" class="btn-logout">⬅ Salir</button>
-      </div>
-    </header>
+    <AppHeader />
 
     <main class="content">
       <div class="titulo-seccion">
         <button @click="$router.push('/trabajador/panel')" class="btn-volver">← Volver</button>
         <h2>Mi Historial de Marcaciones</h2>
+        <span class="subtitulo">Mostrando últimos 50 registros</span>
       </div>
 
       <div v-if="cargando" class="estado-msg">
@@ -31,28 +17,62 @@
 
       <div v-else-if="error" class="error-box">{{ error }}</div>
 
-      <div v-else-if="marcaciones.length > 0" class="lista">
-        <div v-for="m in marcaciones" :key="m.id" class="marcacion-item">
-          <div :class="['item-icono', m.tipo === 'ENTRADA' ? 'icono-entrada' : 'icono-salida']">
-            {{ m.tipo === 'ENTRADA' ? '↗' : '↙' }}
-          </div>
-          <div class="item-fecha">
-            <span class="fecha-txt">{{ formatearFecha(m.fecha) }}</span>
-            <span class="hora-txt">{{ formatearHora(m.fecha) }}</span>
-          </div>
-          <div class="item-badges">
-            <span :class="['badge', m.tipo === 'ENTRADA' ? 'badge-entrada' : 'badge-salida']">
-              {{ m.tipo }}
-            </span>
-            <span v-if="m.estado" :class="['badge', m.estado === 'PUNTUAL' ? 'badge-puntual' : 'badge-tardanza']">
-              {{ m.estado }}
-            </span>
+      <div v-else-if="marcaciones.length > 0" class="tabla-wrapper">
+        <table class="historia-tabla">
+          <thead>
+            <tr>
+              <th>Fecha de Registro</th>
+              <th>Hora Exacta</th>
+              <th>Tipo</th>
+              <th>Estado del Marcaje</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="m in itemsPagina" :key="m.id">
+
+              <td class="col-fecha">{{ formatearFecha(m.fecha) }}</td>
+
+              <td class="col-hora">{{ formatearHora(m.fecha) }}</td>
+
+              <td class="col-tipo">
+                <span class="type-pill" :class="tipoPillClass(m.tipo)">
+                  {{ formatearTipo(m.tipo) }}
+                </span>
+              </td>
+
+              <td class="col-estado">
+                <div class="status-indicator">
+                  <span class="dot" :class="estadoDotClass(m.estado)"></span>
+                  <span :class="estadoTextoClass(m.estado)">{{ m.estado || 'Fuera de Horario' }}</span>
+                </div>
+              </td>
+
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="footer-tabla">
+          <span class="info-pagina">Página {{ paginaActual }} de {{ totalPaginas }}</span>
+
+          <div class="paginacion" v-if="totalPaginas > 1">
+            <button @click="paginaActual = 1" :disabled="paginaActual === 1" class="btn-pagina btn-extremo">«</button>
+            <button @click="paginaActual--" :disabled="paginaActual === 1" class="btn-pagina">‹ Anterior</button>
+            <div class="paginas-numeros">
+              <button
+                v-for="p in paginasVisibles"
+                :key="p"
+                @click="paginaActual = p"
+                :class="['btn-num', p === paginaActual ? 'activo' : '']"
+              >{{ p }}</button>
+            </div>
+            <button @click="paginaActual++" :disabled="paginaActual === totalPaginas" class="btn-pagina">Siguiente ›</button>
+            <button @click="paginaActual = totalPaginas" :disabled="paginaActual === totalPaginas" class="btn-pagina btn-extremo">»</button>
           </div>
         </div>
       </div>
 
       <div v-else class="estado-msg">
-        <span class="estado-emoji"></span>
+        <span class="estado-emoji">📋</span>
         <span>No hay marcaciones registradas</span>
       </div>
     </main>
@@ -60,5 +80,4 @@
 </template>
 
 <script src="./script.js"></script>
-
 <style scoped src="./style.css"></style>
