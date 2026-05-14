@@ -549,3 +549,141 @@ h2 {
     display: none;
   }
 }
+
+
+/* ───────── TABLET ───────── */
+@media (min-width: 769px) and (max-width: 1024px) {
+
+  .content {
+    padding: 20px;
+    gap: 18px;
+  }
+
+  /* TÍTULO */
+  .titulo-seccion {
+    align-items: center;
+    gap: 12px;
+  }
+
+  h2 {
+    font-size: 1.2rem;
+  }
+
+  .btn-volver {
+    padding: 7px 14px;
+    font-size: 0.85rem;
+  }
+
+  /* FILTROS */
+  .filtros-card {
+    padding: 16px;
+    border-radius: 14px;
+  }
+
+  .filtros {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 14px;
+    align-items: end;
+  }
+
+  .campo input {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .btn-buscar {
+    height: 42px;
+    padding: 0 20px;
+    white-space: nowrap;
+  }
+
+  /* RESUMEN */
+  .resumen-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+  }
+
+  .resumen-card {
+    padding: 18px 14px;
+    border-radius: 14px;
+  }
+
+  .res-valor {
+    font-size: 1.8rem;
+  }
+
+  .res-label {
+    font-size: 0.72rem;
+  }
+
+  /* TABLA */
+  .tabla-card {
+    border-radius: 16px;
+    overflow-x: auto;
+  }
+
+  .tabla {
+    min-width: 760px;
+  }
+
+  .tabla th {
+    font-size: 0.76rem;
+    padding: 12px 10px;
+    white-space: nowrap;
+  }
+
+  .tabla td {
+    font-size: 0.78rem;
+    padding: 12px 10px;
+    white-space: nowrap;
+  }
+
+  .celda-fecha {
+    min-width: 110px;
+  }
+
+  .dia-semana {
+    font-size: 0.75rem;
+  }
+
+  .dia-fecha-txt {
+    font-size: 0.74rem;
+  }
+
+  .chip {
+    width: 20px;
+    height: 20px;
+    font-size: 0.65rem;
+  }
+
+  .hora-texto {
+    font-size: 0.74rem;
+  }
+
+  .tiempo-trabajado {
+    font-size: 0.78rem;
+  }
+
+  .resultado-chip {
+    font-size: 0.66rem;
+    padding: 4px 8px;
+    white-space: nowrap;
+  }
+
+  /* PAGINACIÓN */
+  .paginacion {
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .paginacion button {
+    padding: 6px 10px;
+    font-size: 0.8rem;
+  }
+
+  .paginas-numeros {
+    gap: 5px;
+  }
+}

@@ -87,7 +87,7 @@ def registrar_marcacion(
             pais            = pais     or None,
             ip_info         = ip_info  or None,
         )
-        return marcacion, 'No es día laborable. Se registró la visita en historial.'
+        return marcacion, 'No es día laborable. Se registró su visita en historial.'
 
     # ══════════════════════════════════════════════════════════════════════
     # PASO 2 — Obtener marcaciones del día (solo las que afectan asistencia)
@@ -181,7 +181,7 @@ def registrar_marcacion(
                 ip, dispositivo, False,
                 latitud, longitud, ciudad, pais, ip_info
             )
-            return marcacion, 'Ya registró su entrada y salida de hoy.'
+            return marcacion, 'Ya registró su asistencia de entrada y salida de hoy. Asistencia registrada en historial.'
 
         if dia_cerrado:
             # Día ya cerrado → no afecta asistencia

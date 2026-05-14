@@ -50,7 +50,7 @@ const { auth, handleLogout } = useAuth({
 
 <style scoped>
 .header-bar {
-  position: relative;
+  position: relative; 
   z-index: 10;
   display: flex;
   justify-content: space-between;
@@ -139,7 +139,7 @@ const { auth, handleLogout } = useAuth({
 /* ── TEMA CLARO ── */
 .panel.light .header-bar,
 :global(.panel.light) .header-bar {
-  background: #132941 !important;
+  background: #1a3a6b !important;
   border-bottom: 1px solid var(--border-color);
 }
 :global(.panel.light) .btn-sm {

@@ -101,7 +101,7 @@
         </table>
       </div>
 
-     <!-- PAGINACIÓN -->
+      <!-- PAGINACIÓN -->
       <div class="paginacion" v-if="datos && totalPaginas > 1">
 
         <button @click="irA(1)" :disabled="paginaActual === 1" class="btn-pagina btn-extremo">
@@ -133,6 +133,68 @@
   </div>
 </template>
 
-<script src="./script.js"></script>
+<script setup>
+import { ref, computed, onMounted } from 'vue'
+import { useThemeStore } from '@/stores/theme'
+import { useAuth } from '@/composables/useAuth'
+import { useFecha } from '@/composables/useFecha'
+import { usePaginacion } from '@/composables/usePaginacion'
+import AppHeader from '@/components/layout/AppHeader.vue'
+import api from '@/services/api'
+
+const theme = useThemeStore()
+const { auth, handleLogout } = useAuth()
+const { formatearFechaCorta, claseResultado } = useFecha()
+
+const datos = ref(null)
+const cargando = ref(false)
+
+// Días ordenados descendente
+const diasOrdenados = computed(() =>
+  datos.value
+    ? [...datos.value.dias].sort((a, b) => b.fecha.localeCompare(a.fecha))
+    : []
+)
+
+// Paginación
+const {
+  paginaActual,
+  totalPaginas,
+  paginasVisibles,
+  itemsPagina,
+  resetear,
+  irA
+} = usePaginacion(diasOrdenados, 8)
+
+const hoy = new Date()
+const primerDia = new Date(hoy.getFullYear(), hoy.getMonth(), 1)
+
+const fechaInicio = ref(primerDia.toISOString().split('T')[0])
+const fechaFin = ref(hoy.toISOString().split('T')[0])
+
+onMounted(() => cargar())
+
+async function cargar() {
+  cargando.value = true
+  resetear()
+
+  try {
+    const response = await api.get('/api/marcaciones/asistencia/', {
+      params: {
+        fecha_inicio: fechaInicio.value,
+        fecha_fin: fechaFin.value
+      }
+    })
+
+    datos.value = response.data
+
+  } catch (e) {
+    console.error('Error cargando asistencia:', e)
+
+  } finally {
+    cargando.value = false
+  }
+}
+</script>
 
 <style scoped src="./style.css"></style>

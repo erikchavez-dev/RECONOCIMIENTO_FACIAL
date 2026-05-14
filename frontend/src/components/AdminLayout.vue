@@ -313,4 +313,95 @@ function toggleSidebar() {
   }
 }
 
+/* ───────── TABLET RESPONSIVE ───────── */
+@media (min-width: 769px) and (max-width: 1024px) {
+
+  /* BOTÓN MENU */
+  .btn-menu {
+    display: block;
+    width: 26px;
+    height: 26px;
+  }
+
+  /* SIDEBAR OFFCANVAS */
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 1000;
+
+    width: 270px;
+    min-width: 270px;
+    height: 100vh;
+
+    transform: translateX(-100%);
+    transition: transform 0.28s ease;
+    box-shadow: 8px 0 30px rgba(0,0,0,0.25);
+  }
+
+  .sidebar-open {
+    transform: translateX(0);
+  }
+
+  /* CONTENIDO FULL */
+  .contenido {
+    width: 100%;
+  }
+
+  /* HEADER */
+  .header {
+    padding: 16px 20px;
+    gap: 12px;
+  }
+
+  .header-left {
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .pagina-titulo {
+    font-size: 1.1rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .admin-nombre {
+    font-size: 0.78rem;
+    text-align: right;
+    max-width: 240px;
+    line-height: 1.3;
+  }
+
+  /* MAIN */
+  .main {
+    padding: 20px;
+  }
+
+  /* MENU SIDEBAR */
+  .menu-item {
+    padding: 10px 22px;
+    font-size: 0.92rem;
+  }
+
+  .divid-menu {
+    font-size: 0.82rem;
+    padding: 10px 20px 4px;
+  }
+
+  .logo {
+    width: 120px;
+    height: 70px;
+  }
+
+  .sistema {
+    font-size: 0.96rem;
+  }
+
+  .btn-logout {
+    font-size: 0.85rem;
+    padding: 10px 14px;
+  }
+}
+
 </style>

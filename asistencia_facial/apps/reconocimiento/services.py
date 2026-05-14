@@ -37,6 +37,7 @@ def decodificar_imagen(imagen_base64):
             imagen = cv2.resize(imagen, None, fx=factor, fy=factor,
                                 interpolation=cv2.INTER_LINEAR)
 
+
         # Mejorar brillo y contraste automáticamente
         imagen = cv2.convertScaleAbs(imagen, alpha=1.2, beta=10)
 

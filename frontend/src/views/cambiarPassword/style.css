@@ -1,0 +1,106 @@
+
+.cambiar-page {
+  min-height: 100vh;
+  background-color: #122541;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.cambiar-card {
+  background: white;
+  border-radius: 12px;
+  padding: 40px 36px;
+  width: 100%;
+  max-width: 420px;
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+}
+
+.logo {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+  margin-bottom: 12px;
+}
+
+h2 {
+  font-size: 1.2rem;
+  color: #1a3a6b;
+  font-weight: bold;
+}
+
+.subtitulo {
+  font-size: 0.85rem;
+  color: #666;
+  margin-bottom: 24px;
+}
+
+.formulario {
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.campo label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #1a3a6b;
+  margin-bottom: 6px;
+}
+
+.campo input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.campo input:focus {
+  border-color: #1a3a6b;
+}
+
+.error {
+  background: #fef2f2;
+  color: #dc2626;
+  padding: 10px 12px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  border: 1px solid #fecaca;
+}
+
+.exito {
+  background: #f0fdf4;
+  color: #16a34a;
+  padding: 10px 12px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  border: 1px solid #bbf7d0;
+}
+
+.btn-cambiar {
+  width: 100%;
+  padding: 12px;
+  background-color: #1a3a6b;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-cambiar:hover:not(:disabled) {
+  background-color: #142d54;
+}
+
+.btn-cambiar:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}

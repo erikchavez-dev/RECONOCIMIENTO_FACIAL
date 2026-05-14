@@ -9,31 +9,30 @@ import { useAuthStore } from '@/stores/auth'
 
 const routes = [
   // Página de inicio pública
-  { path: '/', component: () => import('@/views/InicioView.vue') },
+  { path: '/', component: () => import('@/views/inicio/index.vue') },
   
   // Login público
-  { path: '/login', component: () => import('@/views/LoginView.vue') },
+  { path: '/login', component: () => import('@/views/login/index.vue') },
   
   // Cambiar contraseña — solo usuarios autenticados
-  { path: '/cambiar-password', component: () => import('@/views/CambiarPasswordView.vue'), meta: { requiresAuth: true } },
+  { path: '/cambiar-password', component: () => import('@/views/cambiarPassword/index.vue'), meta: { requiresAuth: true } },
 
   // Panel del trabajador
-  { path: '/trabajador/panel', component: () => import('@/views/trabajador/PanelView.vue'), meta: { requiresAuth: true, rol: 'TRABAJADOR' } },
-  { path: '/trabajador/historial', component: () => import('@/views/trabajador/HistorialView.vue'), meta: { requiresAuth: true, rol: 'TRABAJADOR' } },
-  //{ path  : '/trabajador/historial', component: () => import('@/views/trabajador/Historial/index.vue'), meta: { requiresAuth: true, rol: 'TRABAJADOR' } },
-  { path: '/trabajador/marcar', component: () => import('@/views/trabajador/MarcarView.vue'), meta: { requiresAuth: true, rol: 'TRABAJADOR' } },
-  //{ path: '/trabajador/asistencia', component: () => import('@/views/trabajador/Asistencia/index.vue'), meta: { requiresAuth: true, rol: 'TRABAJADOR' } },
-  { path: '/trabajador/asistencia', component: () => import('@/views/trabajador/AsistenciaView.vue'), meta: { requiresAuth: true, rol: 'TRABAJADOR' } },
+  { path: '/trabajador/panel', component: () => import('@/views/trabajador/Panel/index.vue'), meta: { requiresAuth: true, rol: 'TRABAJADOR' } },
+  { path  : '/trabajador/historial', component: () => import('@/views/trabajador/Historial/index.vue'), meta: { requiresAuth: true, rol: 'TRABAJADOR' } },
+  { path: '/trabajador/marcar', component: () => import('@/views/trabajador/Marcacion/index.vue'), meta: { requiresAuth: true, rol: 'TRABAJADOR' } },
+  { path: '/trabajador/asistencia', component: () => import('@/views/trabajador/Asistencia/index.vue'), meta: { requiresAuth: true, rol: 'TRABAJADOR' } },
+
 
   // Panel del administrador
-  { path: '/admin/dashboard', component: () => import('@/views/admin/DashboardView.vue'), meta: { requiresAuth: true, rol: 'ADMIN' } },
-  { path: '/admin/trabajadores', component: () => import('@/views/admin/TrabajadoresView.vue'), meta: { requiresAuth: true, rol: 'ADMIN' } },
-  { path: '/admin/marcaciones', component: () => import('@/views/admin/MarcacionesView.vue'), meta: { requiresAuth: true, rol: 'ADMIN' } },
-  { path: '/admin/reportes', component: () => import('@/views/admin/ReportesView.vue'), meta: { requiresAuth: true, rol: 'ADMIN' } },
-  { path: '/admin/configuracion', component: () => import('@/views/admin/ConfiguracionView.vue'), meta: { requiresAuth: true, rol: 'ADMIN' } },
-  { path: '/admin/auditoria', component: () => import('@/views/admin/AuditoriaView.vue'), meta: { requiresAuth: true, rol: 'ADMIN' } },
-  { path: '/admin/usuarios', component: () => import('@/views/admin/UsuariosView.vue'), meta: { requiresAuth: true, rol: 'ADMIN' } },
-  { path: '/admin/asistencia', component: () => import('@/views/admin/AsistenciaView.vue'), meta: { requiresAuth: true, rol: 'ADMIN' } },
+  { path: '/admin/dashboard', component: () => import('@/views/admin/Dashboard/index.vue'), meta: { requiresAuth: true, rol: 'ADMIN' } },
+  { path: '/admin/trabajadores', component: () => import('@/views/admin/Trabajadores/index.vue'), meta: { requiresAuth: true, rol: 'ADMIN' } },
+  { path: '/admin/marcaciones', component: () => import('@/views/admin/Marcaciones/index.vue'), meta: { requiresAuth: true, rol: 'ADMIN' } },
+  { path: '/admin/reportes', component: () => import('@/views/admin/Reportes/index.vue'), meta: { requiresAuth: true, rol: 'ADMIN' } },
+  { path: '/admin/configuracion', component: () => import('@/views/admin/Configuracion/index.vue'), meta: { requiresAuth: true, rol: 'ADMIN' } },
+  { path: '/admin/auditoria', component: () => import('@/views/admin/Auditoria/index.vue'), meta: { requiresAuth: true, rol: 'ADMIN' } },
+  { path: '/admin/usuarios', component: () => import('@/views/admin/Usuarios/index.vue'), meta: { requiresAuth: true, rol: 'ADMIN' } },
+  { path: '/admin/asistencia', component: () => import('@/views/admin/Asistencia/index.vue'), meta: { requiresAuth: true, rol: 'ADMIN' } },
 ]
 
 

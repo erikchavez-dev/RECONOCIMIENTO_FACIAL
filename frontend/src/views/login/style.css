@@ -1,0 +1,250 @@
+
+.login-image {
+  background-image: url('@/assets/imagen/trabajadores-login.webp');
+  animation: gradient 15s ease infinite;
+  overflow: hidden;
+  background-size: 102% 102%;
+  background-position: center;
+  background-repeat: no-repeat;
+  height: 100vh;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;  
+  padding-bottom: 30px;   
+  min-height: 100vh; 
+}
+
+@keyframes gradient {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.login-card {
+  backdrop-filter: blur(9px);
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  z-index: 10;
+  padding: 30px 36px;
+  width: 100%;
+  max-width: 420px;
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+}
+
+.logo {
+  width: 150px;
+  height: 100px;
+  object-fit: contain;
+  margin-bottom: 12px;
+}
+
+h2 {
+  font-size: 1.4em;
+  color: #02265c;
+  font-weight: bold;
+}
+
+.subtitulo {
+  font-size: 1.1em;
+  font-weight: 600;
+  color: #02265c;
+  margin-bottom: 24px;
+
+}
+
+.formulario {
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.campo label {
+  display: block;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #ffffff;
+  margin-bottom: 10px;
+}
+
+.campo input {
+  width: 100%;
+  padding: 10px 12px;
+  padding-right: 44px; /* espacio para el botón del ojo */
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  outline: none;
+  transition: border 0.2s;
+  box-sizing: border-box;
+}
+
+.campo input:focus {
+  border-color: #1a3a6b;
+}
+
+/* --- PASSWORD WRAPPER --- */
+.password-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  
+}
+
+.password-wrapper input {
+  flex: 1;
+  padding-right: 44px; 
+}
+
+.toggle-password {
+  position: absolute;
+  right: 0;
+  top: 0;
+  height: 100%;
+  width: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  border-radius: 0 6px 6px 0;
+}
+
+.toggle-password:focus {
+  outline: none;
+}
+
+.toggle-password img {
+  width: 20px;
+  height: 20px;
+  display: block;
+  pointer-events: none; /* evita que el click lo absorba la imagen */
+}
+
+/* --- ERROR --- */
+.error {
+  background: #fef2f2;
+  color: #dc2626;
+  padding: 10px 12px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  border: 1px solid #fecaca;
+}
+
+/* --- BOTONES --- */
+.btn-ingresar {
+  width: 100%;
+  padding: 12px;
+  background-color: #0004ff;
+  color: white;
+  font-weight: 600;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-ingresar:hover:not(:disabled) {
+  background-color: #1a3a6b;
+  transform: scale(0.95);
+}
+
+.btn-ingresar:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.btn-inicio {
+  width: 100%;
+  padding: 12px;
+  background: #018821;
+  color: #ffffff;
+  font-weight: 600;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.5s;
+}
+.btn-inicio:hover {
+  color: #ffffff;
+  transform: scale(0.95);
+}
+
+.input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-wrapper input {
+  width: 100%;
+  padding-left: 15px; /* espacio para el ícono */
+  box-sizing: border-box;
+  justify-content: space-between;
+}
+
+.icono-input {
+  position: absolute;
+  right: 10px;
+  width: 18px;
+  height: 18px;
+  pointer-events: none; /* no interfiere con el input */
+}
+
+
+
+@media (max-width: 768px) {
+  .login-card {
+  backdrop-filter: blur(3px);
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  z-index: 10;
+  padding: 18px 20px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  }
+  .login-image {
+  background-image: url('@/assets/imagen/trabajadores-login-movil.webp');
+  animation: gradient 15s ease infinite;
+  overflow: hidden;
+  background-size: 102% 102%;
+  background-position: center;
+  background-repeat: no-repeat;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;  
+  padding-bottom: 30px;   
+  min-height: 100vh; 
+  }
+  h2 {
+    display: none;
+  }
+  .subtitulo {
+  font-size: 0.9em;
+  color: #161616;
+  font-weight: 600;
+  margin-bottom: 24px;
+  display: none;
+  }
+  .campo label {
+  display: block;
+  font-size: 1.2em;
+  font-weight: 600;
+  color: #ffffff;
+  margin-bottom: 0px;
+  }
+  .logo {
+    display: none;
+  }
+
+
+}
