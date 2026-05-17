@@ -1,11 +1,8 @@
-// composables/useAuth.js
 // Lógica de autenticación reutilizable.
 // Centraliza el logout para que todas las vistas lo usen igual
 // sin repetir las mismas 3 líneas en cada archivo.
-//
 // Acepta un callback opcional `antesDeLogout` para ejecutar
 // lógica específica de la vista antes de cerrar sesión
-// (ej: detener la cámara en MarcarView).
 
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'

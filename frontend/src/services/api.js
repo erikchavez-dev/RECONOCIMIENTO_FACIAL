@@ -7,11 +7,8 @@ import axios from 'axios'
 import { useAuthStore } from '@/stores/auth'
 
 const api = axios.create({
-  //baseURL: 'http://127.0.0.1:8000',  // URL del backend Django
-  //baseURL: 'http://10.38.154.121:8000',
   baseURL: import.meta.env.VITE_API_URL,
-  //baseURL: 'https://orthophyric-cathartically-winter.ngrok-free.dev',
-  timeout: 10000,                      // 10 segundos máximo por request
+  timeout: 10000,                
 })
 
 // INTERCEPTOR DE REQUEST

@@ -20,7 +20,6 @@
           <select v-model="accionFiltro" @change="cargarAuditoria(1)" class="sel-accion">
             <option value="">Todas</option>
             <option value="LOGIN">Login</option>
-            <option value="MARCACION">Marcación</option>
             <option value="VERIFICACION">Verificación facial</option>
             <option value="CREAR">Crear</option>
             <option value="ELIMINAR">Eliminar</option>
@@ -127,7 +126,7 @@ const accionFiltro = ref('')
 const fechaInicio  = ref('')
 const fechaFin     = ref('')
 
-let timeoutBuscar = null
+let timeoutBuscar = null 
 
 onMounted(() => cargarAuditoria(1))
 

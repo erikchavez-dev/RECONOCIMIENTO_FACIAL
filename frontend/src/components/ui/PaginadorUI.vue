@@ -1,3 +1,6 @@
+// Botones de paginación reutilizables.
+// se combina con usePaginacion() para la lógica.
+
 <template>
   <div class="paginacion" v-if="totalPaginas > 1">
     <!-- Primera página -->
@@ -48,10 +51,6 @@
 </template>
 
 <script setup>
-// PaginadorUI.vue
-// Botones de paginación reutilizables.
-// Emite @ir(numeroPagina) — la vista decide qué hacer con ese número.
-// Combinar con usePaginacion() para la lógica.
 
 defineProps({
   paginaActual:   { type: Number, required: true },

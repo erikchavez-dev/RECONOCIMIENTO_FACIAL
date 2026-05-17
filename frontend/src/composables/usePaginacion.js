@@ -1,9 +1,6 @@
-// composables/usePaginacion.js
 // Lógica de paginación reutilizable — funciona en dos modos:
-//
 // MODO CLIENTE: le pasas el array completo y él calcula las páginas
 //   const { paginaActual, paginasVisibles, itemsPagina, totalPaginas, irA } = usePaginacion(lista, 20)
-//
 // MODO SERVIDOR: tú manejas la carga, solo usas paginaActual/paginasVisibles/irA
 //   const { paginaActual, paginasVisibles, totalPaginas, setTotal, irA } = usePaginacion(null, 20)
 //   // Después de cargar: setTotal(response.data.total_paginas)

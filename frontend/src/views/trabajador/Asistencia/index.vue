@@ -169,28 +169,33 @@ const {
 const hoy = new Date()
 const primerDia = new Date(hoy.getFullYear(), hoy.getMonth(), 1)
 
-const fechaInicio = ref(primerDia.toISOString().split('T')[0])
-const fechaFin = ref(hoy.toISOString().split('T')[0])
+// Inicializar vacíos, no con el día 1
+const fechaInicio = ref('')
+const fechaFin    = ref('')
 
 onMounted(() => cargar())
 
 async function cargar() {
   cargando.value = true
   resetear()
-
   try {
-    const response = await api.get('/api/marcaciones/asistencia/', {
-      params: {
-        fecha_inicio: fechaInicio.value,
-        fecha_fin: fechaFin.value
-      }
-    })
+    // Solo enviar fechas si el usuario las eligió manualmente
+    const params = {}
+    if (fechaInicio.value && fechaFin.value) {
+      params.fecha_inicio = fechaInicio.value
+      params.fecha_fin    = fechaFin.value
+    }
 
+    const response = await api.get('/api/marcaciones/asistencia/', { params })
     datos.value = response.data
 
+    // Rellenar los inputs con el período que devolvió el backend
+    if (datos.value?.periodo) {
+      fechaInicio.value = datos.value.periodo.inicio
+      fechaFin.value    = datos.value.periodo.fin
+    }
   } catch (e) {
     console.error('Error cargando asistencia:', e)
-
   } finally {
     cargando.value = false
   }

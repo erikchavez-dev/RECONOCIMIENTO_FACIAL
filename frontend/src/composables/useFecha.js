@@ -1,4 +1,3 @@
-// composables/useFecha.js
 // Centraliza todo el formateo de fechas/horas y las clases CSS
 // de resultado de asistencia, que se repiten en Historial, Asistencia y MarcarView.
 

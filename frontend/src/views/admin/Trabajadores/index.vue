@@ -188,16 +188,17 @@
             </button>
             <p class="hint">Seleccione exactamente 3 imágenes</p>
           </div>
-
           <!-- PREVIEW FOTOS -->
           <div v-if="fotosCapturadas.length > 0" class="fotos-preview">
-            <div v-for="(foto, i) in fotosCapturadas" :key="i" class="foto-preview-item">
+            <div v-for="(foto, i) in fotosCapturadas" :key="i" class="foto-preview-item" draggable="true"
+              @dragstart="dragStart(i)" @dragover.prevent="dragOver(i)" @dragend="dragEnd"
+              :class="{ 'arrastrando': dragIndex === i, 'sobre': sobreIndex === i && dragIndex !== i }">
+              <div class="drag-handle" title="Arrastrar para reordenar">⠿</div>
               <img :src="foto" alt="Foto" />
               <span class="foto-label">{{ i === 0 ? '⭐ Perfil' : `Foto ${i + 1}` }}</span>
               <button @click="eliminarFoto(i)" class="btn-eliminar-foto">✕</button>
             </div>
           </div>
-
           <div v-if="errorModal" class="error">{{ errorModal }}</div>
           <div v-if="procesando" class="procesando">Registrando embedding... por favor espere</div>
 
@@ -251,6 +252,31 @@ const form = ref({
   rol: 'TRABAJADOR'
 })
 
+
+// Drag & drop para reordenar fotos
+const dragIndex = ref(null)
+const sobreIndex = ref(null)
+
+function dragStart(i) {
+  dragIndex.value = i
+}
+
+function dragOver(i) {
+  if (dragIndex.value === null || dragIndex.value === i) return
+  sobreIndex.value = i
+
+  // Reordena en tiempo real
+  const arr = [...fotosCapturadas.value]
+  const [item] = arr.splice(dragIndex.value, 1)
+  arr.splice(i, 0, item)
+  fotosCapturadas.value = arr
+  dragIndex.value = i
+}
+
+function dragEnd() {
+  dragIndex.value = null
+  sobreIndex.value = null
+}
 
 
 onMounted(async () => {

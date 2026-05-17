@@ -228,8 +228,37 @@ function formatearFechaLocal(date) {
   return date.toLocaleDateString('en-CA')
 }
 
-const fechaInicio = ref(formatearFechaLocal(primerDia))
-const fechaFin    = ref(formatearFechaLocal(hoy))
+// Inicializar vacíos
+const fechaInicio = ref('')
+const fechaFin    = ref('')
+
+async function cargar() {
+  if (!trabajadorId.value) return
+  error.value = ''
+  cargando.value = true
+  resetear()
+  try {
+    // Solo enviar fechas si el usuario las eligió
+    const params = { trabajador_id: trabajadorId.value }
+    if (fechaInicio.value && fechaFin.value) {
+      params.fecha_inicio = fechaInicio.value
+      params.fecha_fin    = fechaFin.value
+    }
+
+    const response = await api.get('/api/marcaciones/asistencia/admin/', { params })
+    datos.value = response.data
+
+    // Rellenar inputs con el período devuelto por el backend
+    if (datos.value?.periodo) {
+      fechaInicio.value = datos.value.periodo.inicio
+      fechaFin.value    = datos.value.periodo.fin
+    }
+  } catch (e) {
+    error.value = e.response?.data?.error || 'Error al cargar la asistencia'
+  } finally {
+    cargando.value = false
+  }
+}
 
 onMounted(async () => {
   try {
@@ -371,26 +400,6 @@ async function guardarCambios() {
   }
 }
 
-async function cargar() {
-  if (!trabajadorId.value) return
-  error.value = ''
-  cargando.value = true
-  resetear()
-  try {
-    const response = await api.get('/api/marcaciones/asistencia/admin/', {
-      params: {
-        trabajador_id: trabajadorId.value,
-        fecha_inicio:  fechaInicio.value,
-        fecha_fin:     fechaFin.value,
-      }
-    })
-    datos.value = response.data
-  } catch (e) {
-    error.value = e.response?.data?.error || 'Error al cargar la asistencia'
-  } finally {
-    cargando.value = false
-  }
-}
 
 function formatearFechaCorta(fechaStr) {
   const [y, m, d] = fechaStr.split('-')

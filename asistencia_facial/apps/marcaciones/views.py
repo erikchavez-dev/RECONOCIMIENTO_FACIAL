@@ -614,7 +614,12 @@ class AsistenciaResumenView(APIView):
             except ValueError:
                 return Response({'error': 'Formato de fecha inválido. Use YYYY-MM-DD'}, status=status.HTTP_400_BAD_REQUEST)
         else:
-            inicio = ahora_local.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            trabajador       = request.user.trabajador
+            fecha_registro   = timezone.localtime(trabajador.fecha_registro).date()
+            inicio_del_mes   = ahora_local.replace(day=1).date()
+            inicio_date      = max(fecha_registro, inicio_del_mes)
+            inicio = datetime(inicio_date.year, inicio_date.month, inicio_date.day,
+                      0, 0, 0, tzinfo=lima_tz)
             fin    = ahora_local.replace(hour=23, minute=59, second=59, microsecond=999999)
 
         marcaciones = Marcacion.objects.filter(
@@ -678,7 +683,12 @@ class AsistenciaAdminView(APIView):
             except ValueError:
                 return Response({'error': 'Formato de fecha inválido. Use YYYY-MM-DD'}, status=status.HTTP_400_BAD_REQUEST)
         else:
-            inicio = ahora_local.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            fecha_registro   = timezone.localtime(trabajador.fecha_registro).date()
+            inicio_del_mes   = ahora_local.replace(day=1).date()
+            inicio_date      = max(fecha_registro, inicio_del_mes)
+
+            inicio = datetime(inicio_date.year, inicio_date.month, inicio_date.day,
+                      0, 0, 0, tzinfo=lima_tz)
             fin    = ahora_local.replace(hour=23, minute=59, second=59, microsecond=999999)
 
         marcaciones = Marcacion.objects.filter(

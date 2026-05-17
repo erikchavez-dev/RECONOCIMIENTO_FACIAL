@@ -216,14 +216,14 @@ h2 {
   background-image: url('@/assets/imagen/trabajadores-login-movil.webp');
   animation: gradient 15s ease infinite;
   overflow: hidden;
-  background-size: 102% 102%;
+  background-size: 103% 100%;
   background-position: center;
   background-repeat: no-repeat;
   display: flex;
   justify-content: center;
   align-items: flex-end;  
-  padding-bottom: 30px;   
-  min-height: 100vh; 
+  padding-bottom: 55px;   
+  min-height: 95vh; 
   }
   h2 {
     display: none;

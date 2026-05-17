@@ -1,10 +1,4 @@
-// composables/useClima.js
-// Obtiene el clima actual via Open-Meteo (gratuito, sin API key).
-// Estrategia:
-//   1. Lee caché de localStorage (válido 10 min)
-//   2. Intenta geolocalización del navegador
-//   3. Si falla, usa coords fijas de Cajamarca como fallback
-// Mapea códigos WMO a descripción e ícono emoji.
+// Obtiene el clima actual la api se llama Open Meteo API.
 
 import { ref } from 'vue'
 import iconMayorDespejado from '@/assets/icons/clima/mayorDespejado.svg'

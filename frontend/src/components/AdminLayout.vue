@@ -1,3 +1,5 @@
+// Botones de navegación del panel de administrador
+
 <template>
   <div class="admin-layout">
 

@@ -1,4 +1,3 @@
-// router/index.js — Configuración de rutas de la aplicación
 // Incluye guardas de navegación que verifican:
 // - Si el usuario está autenticado
 // - Si tiene el rol correcto (ADMIN o TRABAJADOR)

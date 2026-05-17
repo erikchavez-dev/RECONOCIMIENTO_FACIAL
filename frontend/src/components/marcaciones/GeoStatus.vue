@@ -1,3 +1,6 @@
+// Muestra el estado de la geolocalización: dot de color + texto descriptivo.
+// Recibe los valores calculados desde useGeolocalizacion() vía props.
+
 <template>
   <div class="geo-status" :class="geoClase">
     <span class="geo-dot"></span>
@@ -6,9 +9,7 @@
 </template>
 
 <script setup>
-// GeoStatus.vue
-// Muestra el estado de la geolocalización: dot de color + texto descriptivo.
-// Recibe los valores calculados desde useGeolocalizacion() vía props.
+
 
 defineProps({
   geoTexto: {

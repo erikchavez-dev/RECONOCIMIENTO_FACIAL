@@ -88,7 +88,9 @@ h2 {
   background: var(--bg-card);
   border-radius: 12px;
   box-shadow: 0 10px 30px rgba(0,0,0,0.15);
-  overflow: hidden;
+  /* ← overflow: hidden eliminado, reemplazado por overflow-x: auto */
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   border: 1px solid var(--border-color);
   width: 100%;
   box-sizing: border-box;
@@ -100,6 +102,7 @@ h2 {
 
 .historia-tabla {
   width: 100%;
+  min-width: 600px; /* ← fuerza scroll cuando la pantalla es angosta */
   border-collapse: collapse;
   text-align: left;
 }
@@ -261,18 +264,25 @@ h2 {
 }
 .panel.light .error-box { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
 
-/* ── RESPONSIVE ── */
+/* ── RESPONSIVE MÓVIL ── */
 @media (max-width: 768px) {
   .content { padding: 16px; gap: 14px; }
   h2 { font-size: 1.1rem; }
   .subtitulo { display: none; }
 
-  .historia-tabla th,
-  .historia-tabla td { padding: 14px 12px; }
+  /* scroll horizontal — todas las columnas visibles */
+  .tabla-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 10px;
+  }
 
-  /* Ocultar columna Hora en móvil si hay poco espacio */
-  .historia-tabla th:nth-child(2),
-  .historia-tabla td:nth-child(2) { display: none; }
+  .historia-tabla {
+    min-width: 560px; /* fuerza el scroll */
+  }
+
+  .historia-tabla th,
+  .historia-tabla td { padding: 12px 14px; font-size: 0.8rem; }
 
   .footer-tabla {
     flex-direction: column;
@@ -300,7 +310,6 @@ h2 {
     gap: 18px;
   }
 
-  /* HEADER */
   .titulo-seccion {
     display: flex;
     align-items: center;
@@ -308,9 +317,7 @@ h2 {
     gap: 12px;
   }
 
-  h2 {
-    font-size: 1.25rem;
-  }
+  h2 { font-size: 1.25rem; }
 
   .subtitulo {
     margin-left: auto;
@@ -318,27 +325,18 @@ h2 {
     white-space: nowrap;
   }
 
-  /* TABLA */
   .tabla-wrapper {
     border-radius: 16px;
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .historia-tabla {
-    width: 100%;
-    min-width: 100%;
+    min-width: 560px;
   }
 
-  .historia-tabla th {
-    padding: 14px 14px;
-    font-size: 0.72rem;
-    letter-spacing: 0.04em;
-  }
-
-  .historia-tabla td {
-    padding: 14px;
-    font-size: 0.82rem;
-  }
+  .historia-tabla th,
+  .historia-tabla td { padding: 14px; font-size: 0.8rem; }
 
   .col-fecha {
     min-width: 210px;
@@ -346,60 +344,38 @@ h2 {
     line-height: 1.35;
   }
 
-  .col-hora {
-    font-size: 0.95rem;
-  }
+  .col-hora { font-size: 0.95rem; }
 
-  .type-pill {
-    padding: 4px 10px;
-    font-size: 0.7rem;
-  }
+  .type-pill { padding: 4px 10px; font-size: 0.7rem; }
 
-  .status-indicator {
-    gap: 6px;
-    font-size: 0.76rem;
-  }
+  .status-indicator { gap: 6px; font-size: 0.76rem; }
 
-  .dot {
-    width: 7px;
-    height: 7px;
-  }
+  .dot { width: 7px; height: 7px; }
 
-  /* FOOTER */
   .footer-tabla {
-    padding: 14px 18px;
-    justify-content: center;
-    gap: 12px;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 14px 16px;
   }
 
-  .info-pagina {
-    font-size: 0.78rem;
-  }
+  .info-pagina { font-size: 0.78rem; }
 
-  /* PAGINACIÓN */
   .paginacion {
     gap: 6px;
     flex-wrap: nowrap;
+    overflow-x: auto;
+    width: 100%;
   }
 
-  .paginas-numeros {
-    gap: 5px;
-  }
+  .paginas-numeros { gap: 5px; }
 
-  .btn-pagina,
-  .btn-num {
+  .btn-pagina, .btn-num {
     padding: 6px 10px;
     font-size: 0.76rem;
     border-radius: 7px;
   }
 
-  /* ESTADOS */
-  .estado-msg {
-    padding: 50px 20px;
-  }
+  .estado-msg { padding: 50px 20px; }
 
-  .reloj-arena {
-    width: 28px;
-    height: 28px;
-  }
+  .reloj-arena { width: 28px; height: 28px; }
 }

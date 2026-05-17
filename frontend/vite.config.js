@@ -31,11 +31,11 @@ export default defineConfig({
     }
   },
   server: {
-    host:true,
-    port: 5173,
+    //host:true,
+    port: 5173
     
     //para mis pruebas con ngrok necesito esto dentro de server
-    allowedHosts: true
+    //allowedHosts: true
     
   }
 })

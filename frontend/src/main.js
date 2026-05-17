@@ -1,4 +1,4 @@
-// main.js — Punto de entrada de la aplicación Vue
+// Punto de entrada de la aplicación Vue
 // Registra los plugins principales: Router y Pinia
 // Pinia maneja el estado global (auth, datos)
 // Router maneja la navegación entre páginas

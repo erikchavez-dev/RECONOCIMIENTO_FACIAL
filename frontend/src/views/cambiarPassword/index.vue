@@ -52,7 +52,7 @@
 </template>
 
 <script setup>
-import IconoLogo from '/logo-3.webp' 
+import IconoLogo from '/logo-4.webp' 
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'

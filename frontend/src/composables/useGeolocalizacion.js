@@ -1,4 +1,3 @@
-// composables/useGeolocalizacion.js
 // Encapsula toda la lógica de geolocalización del navegador.
 // Expone latitud, longitud, estado (ok/denegado/obteniendo/no-soportado)
 // y los computed de texto y clase CSS para el indicador visual.

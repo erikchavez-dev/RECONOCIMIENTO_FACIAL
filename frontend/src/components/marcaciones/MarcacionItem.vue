@@ -1,3 +1,7 @@
+// Renderiza una fila del historial de marcaciones.
+// Encapsula la lógica de tipos (ENTRADA_VALIDA, SALIDA_VALIDA, FUERA_HORARIO,
+// SOLO_VERIFICACION)
+
 <template>
   <div class="marcacion-item">
     <div :class="['item-icono', claseIcono]">
@@ -22,10 +26,6 @@
 </template>
 
 <script setup>
-// MarcacionItem.vue
-// Renderiza una fila del historial de marcaciones.
-// Encapsula la lógica de tipos (ENTRADA_VALIDA, SALIDA_VALIDA, FUERA_HORARIO,
-// SOLO_VERIFICACION) que antes vivía dispersa en Historial/script.js.
 
 import { computed } from 'vue'
 import { useFecha } from '@/composables/useFecha'

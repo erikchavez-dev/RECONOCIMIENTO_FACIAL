@@ -1,3 +1,5 @@
+// Archivo para el header del sistema
+
 <template>
   <header class="header-bar">
     <div class="header-left">
@@ -157,9 +159,9 @@ const { auth, handleLogout } = useAuth({
     padding: 12px 16px;
   }
   .header-right { width: 100%; justify-content: space-between; }
-  .logo { width: 110px; height: auto; }
-  .sistema-nombre { font-size: 0.8rem; }
-  .nombre-chip { padding: 6px 10px; font-size: 0.75rem; }
+  .logo { width: 95px; height: auto; }
+  .sistema-nombre { font-size: 1.04em; }
+  .nombre-chip { padding: 6px 10px; font-size: 1.04em; }
   .btn-logout { padding: 6px 12px; font-size: 0.75rem; }
 }
 </style>

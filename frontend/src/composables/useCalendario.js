@@ -1,6 +1,6 @@
-// composables/useCalendario.js
 // Maneja el mini-calendario del panel: mes/año reactivos, navegación
-// entre meses y carga de feriados nacionales de Perú via date.nager.at.
+// entre meses y carga de feriados nacionales de Perú.
+// la api que estoy usando se llama Nager Date API
 
 import { ref, computed } from 'vue'
 
