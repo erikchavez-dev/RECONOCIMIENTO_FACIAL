@@ -222,8 +222,8 @@ h2 {
   display: flex;
   justify-content: center;
   align-items: flex-end;  
-  padding-bottom: 55px;   
-  min-height: 95vh; 
+  padding-bottom: 70px;   
+  height: 80vh; 
   }
   h2 {
     display: none;
