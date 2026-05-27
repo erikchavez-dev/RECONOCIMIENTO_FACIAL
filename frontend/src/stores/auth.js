@@ -2,6 +2,8 @@
 // Cada pestaña tiene su propia sesión independiente via sessionStorage
 // Esto permite que un admin y un trabajador estén logueados en pestañas distintas
 // Las URLs del backend se leen desde VITE_API_URL (sin hardcodear)
+// stores/auth.js — Store de autenticación con Pinia
+// Cada pestaña tiene su propia sesión independiente via sessionStorage
 
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
@@ -9,8 +11,6 @@ import axios from 'axios'
 
 const BASE_URL = import.meta.env.VITE_API_URL
 
-// Clave única por pestaña usando sessionStorage
-// sessionStorage es por pestaña — no se comparte entre ellas
 function cargarSesion() {
   try {
     const raw = sessionStorage.getItem('auth_session')
@@ -34,86 +34,91 @@ function limpiarSesion() {
 
 export const useAuthStore = defineStore('auth', () => {
 
-  // Cargar sesión existente de esta pestaña al iniciar
   const sesionGuardada = cargarSesion()
 
-  const token = ref(sesionGuardada?.token || null)
-  const refreshTokenValue = ref(sesionGuardada?.refreshToken || null)
-  const usuario = ref(sesionGuardada?.usuario || null)
+  const token              = ref(sesionGuardada?.token        || null)
+  const refreshTokenValue  = ref(sesionGuardada?.refreshToken || null)
+  const usuario            = ref(sesionGuardada?.usuario      || null)
 
-  // COMPUTED
-  const isAuthenticated = computed(() => !!token.value)
-  const isAdmin = computed(() => usuario.value?.rol === 'ADMIN')
-  const esTrabajador = computed(() => usuario.value?.rol === 'TRABAJADOR')
+  // ── Computed de rol ──────────────────────────────────────────────────────
+  const isAuthenticated   = computed(() => !!token.value)
+  const rolActual         = computed(() => usuario.value?.rol || null)
+
+  const esSuperAdmin      = computed(() => rolActual.value === 'SUPERADMIN')
+  const esAdmin           = computed(() => rolActual.value === 'ADMIN')
+  const esAdminOSuperAdmin = computed(() => ['ADMIN', 'SUPERADMIN'].includes(rolActual.value))
+  const esTrabajador      = computed(() => rolActual.value === 'TRABAJADOR')
+
+  // Alias para compatibilidad con código existente
+  const isAdmin           = esAdminOSuperAdmin
+
   const debeCambiarPassword = computed(() => usuario.value?.debe_cambiar_password)
 
-  // LOGIN — llama al backend y guarda en memoria + sessionStorage de esta pestaña
+  // ── LOGIN ────────────────────────────────────────────────────────────────
   async function login(username, password) {
-    const response = await axios.post(`${BASE_URL}/api/auth/login/`, {
-      username,
-      password
-    })
+    const response = await axios.post(`${BASE_URL}/api/auth/login/`, { username, password })
 
-    token.value = response.data.access
+    token.value             = response.data.access
     refreshTokenValue.value = response.data.refresh
-    usuario.value = {
+    usuario.value           = {
       ...response.data.usuario,
-      debe_cambiar_password: response.data.debe_cambiar_password
+      debe_cambiar_password: response.data.debe_cambiar_password,
     }
 
-    // Persistir en sessionStorage (solo esta pestaña)
     guardarSesion({
-      token: token.value,
+      token:        token.value,
       refreshToken: refreshTokenValue.value,
-      usuario: usuario.value
+      usuario:      usuario.value,
     })
 
     return response.data
   }
 
-  // LOGOUT — limpia memoria y sessionStorage de esta pestaña
+  // ── LOGOUT ───────────────────────────────────────────────────────────────
   async function logout() {
     try {
       if (refreshTokenValue.value) {
         await axios.post(`${BASE_URL}/api/auth/logout/`, {
-          refresh: refreshTokenValue.value
+          refresh: refreshTokenValue.value,
         }, {
-          headers: { Authorization: `Bearer ${token.value}` }
+          headers: { Authorization: `Bearer ${token.value}` },
         })
       }
     } catch {}
     finally {
-      token.value = null
+      token.value             = null
       refreshTokenValue.value = null
-      usuario.value = null
+      usuario.value           = null
       limpiarSesion()
     }
   }
 
-  // REFRESH TOKEN — renueva el access token y actualiza sessionStorage
+  // ── REFRESH TOKEN ────────────────────────────────────────────────────────
   async function refreshToken() {
     const response = await axios.post(`${BASE_URL}/api/auth/token/refresh/`, {
-      refresh: refreshTokenValue.value
+      refresh: refreshTokenValue.value,
     })
     token.value = response.data.access
-
-    // Actualizar token en sessionStorage
     guardarSesion({
-      token: token.value,
+      token:        token.value,
       refreshToken: refreshTokenValue.value,
-      usuario: usuario.value
+      usuario:      usuario.value,
     })
   }
 
   return {
     token,
     usuario,
+    rolActual,
     isAuthenticated,
     isAdmin,
+    esSuperAdmin,
+    esAdmin,
+    esAdminOSuperAdmin,
     esTrabajador,
     debeCambiarPassword,
     login,
     logout,
-    refreshToken
+    refreshToken,
   }
 })

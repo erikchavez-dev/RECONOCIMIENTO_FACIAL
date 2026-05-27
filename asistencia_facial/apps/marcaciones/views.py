@@ -19,6 +19,7 @@ from apps.trabajadores.models import Trabajador
 from apps.usuarios.permissions import EsAdmin
 from rest_framework.permissions import IsAuthenticated
 from apps.configuracion.models import ConfiguracionSistema
+from apps.auditoria.services import registrar_auditoria
 
 
 class MarcacionRegistrarView(APIView):
@@ -811,4 +812,10 @@ class EditarMarcacionAdminView(APIView):
                 tipo__in=['SALIDA_VALIDA', 'SALIDA'],
             ).delete()
 
+        registrar_auditoria(
+            request.user,
+            'EDITAR_MARCACION',
+            f'Marcación editada para trabajador_id={trabajador_id}, fecha={fecha_str}, entrada={entrada_hora}, salida={salida_hora}',
+            request.META.get('REMOTE_ADDR', '0.0.0.0')
+        )
         return Response({'ok': True})

@@ -133,7 +133,7 @@ def registrar_marcacion(
                 ip, dispositivo, False,
                 latitud, longitud, ciudad, pais, ip_info
             )
-            return marcacion, 'Aún no es hora de entrada. Marcación registrada en historial.'
+            return marcacion, 'Aún no es hora de entrada, marcación registrada en historial.'
 
         elif en_rango_entrada_puntual:
             # ENTRADA PUNTUAL
@@ -169,7 +169,7 @@ def registrar_marcacion(
                 ip, dispositivo, False,
                 latitud, longitud, ciudad, pais, ip_info
             )
-            return marcacion, 'Fuera del horario de marcación.'
+            return marcacion, 'Fuera del horario de salida, marcación registrada en historial.'
 
     else:
         # ── Con entrada, sin salida ───────────────────────────────────────

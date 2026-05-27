@@ -327,7 +327,7 @@ async function cargarEstadoHoy() {
 }
 
 // ── Slider ───────────────────────────────────────────────────
-const tabs        = ['Clima', 'Calendario', 'Estado hoy']
+const tabs        = ['Guía', 'Calendario', 'Estado hoy']
 const slideActivo = ref(0)
 let sliderInterval = null
 function iniciarSliderAuto() {

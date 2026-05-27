@@ -1,0 +1,124 @@
+.toolbar {
+  display: flex;
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 20px;
+}
+
+.subtitulo {
+  color: var(--text-secondary);
+  font-size: 0.9em;
+}
+
+.seccion {
+  background: var(--bg-panel);
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 24px;
+  box-shadow: var(--shadow);
+}
+
+.seccion-titulo {
+  font-size: 1em;
+  font-weight: 700;
+  color: var(--text-accent);
+  margin-bottom: 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.tabla-container { overflow-x: auto; }
+
+.tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92em;
+}
+
+.tabla th {
+  background: #1a3a6b;
+  color: #fff;
+  padding: 10px 12px;
+  text-align: left;
+  font-weight: 600;
+}
+
+.tabla td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-primary);
+}
+
+.vacio {
+  text-align: center;
+  color: var(--text-secondary);
+  padding: 20px;
+}
+
+.cargando {
+  padding: 20px;
+  color: var(--text-secondary);
+}
+
+.badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 0.8em;
+  font-weight: 600;
+}
+
+.badge-bloqueado { background: #ffe0e0; color: #c00; }
+.badge-libre     { background: #e0ffe8; color: #080; }
+
+.btn-promover {
+  background: #1a3a6b;
+  color: #fff;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85em;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+.btn-promover:hover { background: #0f2244; }
+
+.btn-degradar {
+  background: #fff0f0;
+  color: #c00;
+  border: 1px solid #fcc;
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85em;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+.btn-degradar:hover { background: #ffe0e0; }
+
+.buscador-input {
+  margin-bottom: 14px;
+}
+
+.input-buscar {
+  width: 100%;
+  max-width: 360px;
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.92em;
+  background: var(--bg-app);
+  color: var(--text-primary);
+}
+
+.mensaje {
+  margin-top: 16px;
+  padding: 12px 18px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.92em;
+}
+.exito { background: #e0ffe8; color: #080; border: 1px solid #b2f0c4; }
+.error { background: #ffe0e0; color: #c00; border: 1px solid #fcc;    }

@@ -518,7 +518,7 @@ async function construirDona() {
 
           // Número arriba
           ctx.font      = 'bold 11px sans-serif'
-          ctx.fillStyle = pct > 30 ? '#000' : '#000'
+          ctx.fillStyle = pct > 30 ? '#fff' : '#fff'
           ctx.fillText(String(valor), x, y - 7)
 
           // Porcentaje abajo

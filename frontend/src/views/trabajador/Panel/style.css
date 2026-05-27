@@ -350,6 +350,9 @@
 .right-col {
   flex: 1;
   min-height: 320px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 /* CONTENEDOR */

@@ -1,6 +1,6 @@
 
 .login-image {
-  background-image: url('@/assets/imagen/trabajadores-login.webp');
+  background-image: url('@/assets/imagen/trabajadores-login-dos.webp');
   animation: gradient 15s ease infinite;
   overflow: hidden;
   background-size: 102% 102%;
@@ -39,18 +39,21 @@
   height: 100px;
   object-fit: contain;
   margin-bottom: 12px;
+  background-color: rgba(248, 247, 247, 0.432);
+  padding: 10px;
+  border-radius: 10px;
 }
 
 h2 {
   font-size: 1.4em;
-  color: #02265c;
+  color: #ffffff;
   font-weight: bold;
 }
 
 .subtitulo {
   font-size: 1.1em;
   font-weight: 600;
-  color: #02265c;
+  color: #ffffff;
   margin-bottom: 24px;
 
 }
@@ -202,8 +205,8 @@ h2 {
 
 @media (max-width: 768px) {
   .login-card {
-  backdrop-filter: blur(3px);
-  background: rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(1px);
+  background: rgba(0, 0, 0, 0.685);
   border-radius: 12px;
   border: 2px solid rgba(255, 255, 255, 0.4);
   z-index: 10;
@@ -212,19 +215,40 @@ h2 {
   text-align: center;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
   }
-  .login-image {
-  background-image: url('@/assets/imagen/trabajadores-login-movil.webp');
-  animation: gradient 15s ease infinite;
+.login-image {
+  position: relative;
   overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  padding-bottom: 70px;
+  height: 80vh;
+}
+
+.login-image::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+
+  background-image: url('@/assets/imagen/trabajadores-login-movil.webp');
   background-size: 103% 100%;
   background-position: center;
   background-repeat: no-repeat;
-  display: flex;
-  justify-content: center;
-  align-items: flex-end;  
-  padding-bottom: 70px;   
-  height: 80vh; 
-  }
+
+  filter: blur(2px);
+  transform: scale(1.05);
+
+  z-index: 0;
+}
+
+.login-image > * {
+  position: relative;
+  z-index: 1;
+}
+
+
+
+
   h2 {
     display: none;
   }

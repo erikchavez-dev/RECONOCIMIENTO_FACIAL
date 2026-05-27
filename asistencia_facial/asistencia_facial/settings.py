@@ -31,7 +31,7 @@ SECRET_KEY = 'django-insecure-^gey1p+jdbp3zzlq@ed4)80hcsblr&-b_gh3_hdjz@6^9eoy$u
 DEBUG = True
 
 #para mis pruebas necesito esto '*' dentro de allowed_host   
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -162,6 +162,13 @@ CORS_ALLOWED_ORIGINS = [
     'http://10.172.114.121:5173',
     'http://192.168.20.109:5173',
     'http://127.0.0.1:5173',
+    #ip de mi laptop
+    'http://192.168.20.33:5173',
+    'http://10.172.114.121:5173',
+
+
+    'http://10.243.13.121:5173',
+    'http://192.168.211.121:5173',
 ]
 #para pruebas en mi red local
 CORS_ALLOW_ALL_ORIGINS = True

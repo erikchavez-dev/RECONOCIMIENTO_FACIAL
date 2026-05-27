@@ -10,7 +10,7 @@ from .serializers import (
 from apps.usuarios.models import Usuario, Rol
 from apps.auditoria.services import registrar_auditoria
 from django.contrib.auth.hashers import make_password
-from apps.usuarios.permissions import EsAdmin
+from apps.usuarios.permissions import EsAdmin, EsSuperAdmin
 import os
 from django.conf import settings
 
@@ -207,7 +207,7 @@ class ActivarDesactivarTrabajadorView(APIView):
 
 
 class SubirFotoTrabajadorView(APIView):
-    permission_classes = [EsAdmin]
+    permission_classes = [EsSuperAdmin]
 
     def post(self, request, pk):
         try:

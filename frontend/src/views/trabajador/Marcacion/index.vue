@@ -16,7 +16,7 @@
         <!-- Aviso de pocos intentos (solo cuando quedan 2 o menos) -->
         <div v-if="intentosRestantes !== null && intentosRestantes <= 2" class="alerta-intentos"
              :class="intentosRestantes === 1 ? 'alerta-critica' : 'alerta-advertencia'">
-          <span class="alerta-icono">{{ intentosRestantes === 1 ? '🚨' : '⚠️' }}</span>
+          <span class="alerta-icono">{{ intentosRestantes === 1 ? '' : '' }}</span>
           <span class="alerta-texto">
             {{ intentosRestantes === 1
               ? 'Último intento — si falla, su cuenta será bloqueada'
@@ -51,7 +51,7 @@
         </button>
 
         <div v-if="errorCamara" class="error-box">
-          <span class="error-icono">⚠️</span> {{ errorCamara }}
+          <span class="error-icono"></span> {{ errorCamara }}
         </div>
       </div>
 
@@ -61,7 +61,7 @@
 
           <!-- Icono grande con emoji en lugar de img -->
           <div class="resultado-emoji">
-            {{ resultado.exito ? '✅' : resultado.info ? 'ℹ️' : '❌' }}
+            {{ resultado.exito ? '' : resultado.info ? 'ℹ' : '' }}
           </div>
 
           <h3>{{ resultado.mensaje }}</h3>
