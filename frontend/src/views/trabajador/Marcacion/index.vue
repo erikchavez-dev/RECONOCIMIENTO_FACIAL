@@ -337,9 +337,10 @@ async function intentarMarcacion() {
       }
     }
 
+
     if (status === 500) {
       return setMensajeError('Error en el servidor. Espere un momento e intente de nuevo.')
-    }
+      }
 
     setMensajeError(msg || 'Error al procesar. Intente de nuevo.')
   }

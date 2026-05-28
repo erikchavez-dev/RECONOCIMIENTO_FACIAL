@@ -77,47 +77,34 @@
                 @click="slideActivo = i"
               >
                 {{ tab }}
-              </button>
+             </button>
             </div>
 
-            <!-- SLIDE 0: CLIMA -->
-            <transition name="slide-fade">
-              <div class="slide-content" v-show="slideActivo === 0">
-                <div v-if="!clima" class="slide-loading">Cargando clima...</div>
-                <template v-else>
-                  <div class="clima-row">
-                    <img :src="clima.icono" class="clima-icon" />
-                    <div class="clima-main">
-                      <span class="clima-temp">{{ clima.temperatura }}°C</span>
-                      <span class="clima-desc">{{ clima.descripcion }}</span>
-                      <span class="clima-lugar">Ubicación actual</span>
-                    </div>
-                  </div>
-                  <div class="clima-extra-row">
-                    <div class="ce-item">
-                      <div class="ce-label">Humedad</div>
-                      <span class="ce-val">{{ clima.humedad }}%</span>
-                    </div>
-                    <div class="ce-item">
-                      <div class="ce-label">Viento</div>
-                      <span class="ce-val">{{ clima.viento }} km/h</span>
-                    </div>
-                    <div class="ce-item">
-                      <div class="ce-label">Sensación</div>
-                      <span class="ce-val">{{ clima.sensacion }}°C</span>
-                    </div>
-                    <div class="ce-item">
-                      <div class="ce-label">Precip.</div>
-                      <span class="ce-val">{{ clima.lluvia }} mm</span>
-                    </div>
-                  </div>
-                </template>
+
+            <!-- SLIDE 0: VIDEO -->
+           <transition name="slide-fade" class="video-del-slide">
+              <div class="slide-content video-slide" v-if="slideActivo === 0" key="video">
+
+                <video class="video-guia" autoplay muted loop playsinline>
+                  <source :src="videoGuia" type="video/mp4" />
+                </video>
+
+                <div class="video-overlay"></div>
+
+                <div class="video-info">
+                  <h2>Guía del Sistema</h2>
+                  <p>
+                    Aprende rápidamente cómo registrar asistencia,
+                    revisar historial y gestionar tu jornada laboral.
+                  </p>
+                </div>
+
               </div>
             </transition>
 
             <!-- SLIDE 1: CALENDARIO + FERIADOS -->
-            <transition name="slide-fade">
-              <div class="slide-content" v-show="slideActivo === 1">
+           <transition name="slide-fade">
+              <div class="slide-content" v-if="slideActivo === 1" key="calendario">
                 <div class="cal-head">
                   <button @click="mesAnterior" class="cal-nav-btn">‹</button>
                   <span class="cal-mes-txt">{{ nombreMes }} {{ anioCalendario }}</span>
@@ -147,8 +134,8 @@
             </transition>
 
             <!-- SLIDE 2: ESTADO HOY -->
-            <transition name="slide-fade">
-              <div class="slide-content" v-show="slideActivo === 2">
+           <transition name="slide-fade">
+              <div class="slide-content" v-if="slideActivo === 2" key="estado">
                 <div v-if="cargandoEstado" class="slide-loading">Cargando estado...</div>
                 <template v-else>
                   <div class="estado-rows">
@@ -202,11 +189,12 @@ import imagenAsistencia     from '@/assets/asistencia.webp'
 import relojArena           from '@/assets/imagen/reloj-de-arena.png'
 import iconoAlerta          from '@/assets/imagen/mano-reloj.png'
 import iconoCheck           from '@/assets/icons/icon-check.svg'
+import videoGuia            from '@/assets/videos/slide-uno.mp4'
+
 
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useThemeStore } from '@/stores/theme'
 import { useAuthStore }  from '@/stores/auth'
-import { useClima }      from '@/composables/useClima'
 import { useCalendario } from '@/composables/useCalendario'
 import AppHeader from '@/components/layout/AppHeader.vue'
 import { FRASES } from '@/assets/data/frases'
@@ -218,7 +206,7 @@ const theme = useThemeStore()
 // handleLogout no se usa en el template de PanelView directamente —
 // lo maneja AppHeader internamente
 
-const { clima, cargarClima }                              = useClima()
+
 const { nombreMes, anioCalendario, diasCalendario,
         cargarFeriados, mesAnterior, mesSiguiente }       = useCalendario()
 
@@ -333,13 +321,12 @@ let sliderInterval = null
 function iniciarSliderAuto() {
   sliderInterval = setInterval(() => {
     slideActivo.value = (slideActivo.value + 1) % tabs.length
-  }, 20000)
+  }, 10000)
 }
 
 // ── Init ─────────────────────────────────────────────────────
 onMounted(async () => {
   cargarFrase()
-  cargarClima()
   cargarFeriados(anioCalendario.value)
   cargarEstadoHoy()
   iniciarSliderAuto()

@@ -174,7 +174,7 @@ h2 { font-size: 1.3rem; font-weight: 700; color: var(--text-main); margin: 0; }
 }
 
 .panel.light .estado-neutro .instruccion {
-  color: #64748b;
+  color: #000000;
 }
 
 .panel.light .estado-error {
