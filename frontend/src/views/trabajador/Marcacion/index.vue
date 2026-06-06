@@ -273,6 +273,7 @@ async function intentarMarcacion() {
       ubicacion: data.ubicacion || {},
     }
     paso.value = 'resultado'
+    
 
   } catch (e) {
     detectando.value = false
@@ -336,6 +337,7 @@ async function intentarMarcacion() {
         return setMensajeError('Rostro no reconocido. Reposiciónese frente a la cámara y vuelva a intentar.', 'neutro')
       }
     }
+
 
 
     if (status === 500) {

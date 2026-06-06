@@ -24,7 +24,6 @@
   --accent: #2563eb;
   --azul: #1a3a6b;
 }
-
 /* CONTENT */
 .content {
   position: relative; z-index: 10; flex: 1; padding: 28px 32px 24px;
@@ -154,7 +153,7 @@ h2 { font-size: 1.3rem; font-weight: 700; color: var(--text-main); margin: 0; }
   border-color: rgba(234, 179, 8, 0.4);
 }
 .estado-advertencia .instruccion {
-  color: #d97706;
+  color: #d97706 !important;
   font-weight: 600;
 }
 
@@ -166,6 +165,7 @@ h2 { font-size: 1.3rem; font-weight: 700; color: var(--text-main); margin: 0; }
   color: #18c440;
   font-weight: 600;
 }
+
 
 /* Light mode */
 .panel.light .estado-neutro {
