@@ -20,9 +20,43 @@ from apps.usuarios.permissions import EsAdmin
 from rest_framework.permissions import IsAuthenticated
 from apps.configuracion.models import ConfiguracionSistema
 from apps.auditoria.services import registrar_auditoria
+from .geo_service import validar_geocerca
+
+
+"""
+FRAGMENTO PARA REEMPLAZAR en apps/marcaciones/views.py
+═══════════════════════════════════════════════════════
+Solo se muestra la clase MarcacionRegistrarView completa.
+El resto del archivo (historial, reportes, etc.) permanece igual.
+
+INSTRUCCIÓN DE INTEGRACIÓN:
+1. En marcaciones/views.py, agrega este import al inicio del archivo:
+       from apps.configuracion.models import ConfiguracionSistema
+       from .geo_service import validar_geocerca
+   (ConfiguracionSistema ya está importado si actualizaste el archivo; 
+    solo agrega geo_service si no está.)
+
+2. Reemplaza ÚNICAMENTE la clase MarcacionRegistrarView con la de abajo.
+"""
+
+# ─── Imports adicionales necesarios (añadir al bloque de imports del archivo) ─
+# from .geo_service import validar_geocerca
+# (ConfiguracionSistema ya debería estar importado en el archivo original)
 
 
 class MarcacionRegistrarView(APIView):
+    """
+    POST /api/marcaciones/registrar/
+
+    Flujo con geocerca:
+    1. Obtiene config del sistema.
+    2. Valida geocerca ANTES de cualquier otra lógica:
+       - Si geocerca activa + ubicación fuera del radio → rechaza inmediatamente.
+       - Si geocerca activa + ubicación dentro del radio → continúa.
+       - Si geocerca desactiva → continúa igual que antes.
+    3. Llama a registrar_marcacion() con los datos completos.
+    4. Si config.geocerca_auditoria=True, registra auditoría detallada.
+    """
 
     def post(self, request):
         trabajador_id = request.data.get('trabajador_id')
@@ -32,6 +66,8 @@ class MarcacionRegistrarView(APIView):
         ciudad        = request.data.get('ciudad')
         pais          = request.data.get('pais')
         ip_info       = request.data.get('ip_info')
+        # El frontend puede enviar el navegador para auditoría
+        navegador     = request.data.get('navegador', '')
 
         if not trabajador_id:
             return Response(
@@ -55,6 +91,62 @@ class MarcacionRegistrarView(APIView):
 
         ip = request.META.get('REMOTE_ADDR', '0.0.0.0')
 
+        # ══════════════════════════════════════════════════════════════════
+        # VALIDACIÓN DE GEOCERCA
+        # Se ejecuta ANTES de registrar_marcacion() para que una marcación
+        # rechazada por geocerca NO genere ningún registro en la BD.
+        # ══════════════════════════════════════════════════════════════════
+        config = ConfiguracionSistema.objects.first()
+        if not config:
+            return Response(
+                {'error': 'No hay configuración del sistema'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        permitido, mensaje_rechazo, auditoria_data = validar_geocerca(
+            latitud=latitud,
+            longitud=longitud,
+            config=config,
+            ip=ip,
+            dispositivo=dispositivo,
+            navegador=navegador,
+        )
+
+        if not permitido:
+            # Registrar en auditoría si está configurado
+            if config.geocerca_auditoria and auditoria_data:
+                try:
+                    registrar_auditoria(
+                        usuario=None,   # marcación pública, sin usuario autenticado
+                        accion='GEOCERCA_RECHAZO',
+                        descripcion=(
+                            f'Trabajador ID={trabajador_id} | '
+                            f'Resultado: {auditoria_data.get("resultado")} | '
+                            f'Motivo: {auditoria_data.get("motivo")} | '
+                            f'Lat: {auditoria_data.get("latitud_reportada")} | '
+                            f'Lon: {auditoria_data.get("longitud_reportada")} | '
+                            f'Distancia: {auditoria_data.get("distancia_metros")}m | '
+                            f'IP: {auditoria_data.get("ip")} | '
+                            f'Dispositivo: {auditoria_data.get("dispositivo")} | '
+                            f'Navegador: {auditoria_data.get("navegador")} | '
+                            f'Fecha: {auditoria_data.get("fecha_hora")}'
+                        ),
+                        ip=ip,
+                    )
+                except Exception:
+                    pass  # La auditoría no debe bloquear la respuesta
+
+            return Response(
+                {
+                    'error': mensaje_rechazo,
+                    'codigo': 'GEOCERCA_RECHAZADO',
+                },
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # ══════════════════════════════════════════════════════════════════
+        # GEOCERCA OK (o desactivada) → proceder con la marcación normal
+        # ══════════════════════════════════════════════════════════════════
         marcacion, mensaje = registrar_marcacion(
             trabajador, ip, dispositivo,
             latitud, longitud, ciudad, pais, ip_info
@@ -66,12 +158,31 @@ class MarcacionRegistrarView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        # Registrar auditoría de geocerca aprobada (si está activada)
+        if config.geocerca_activa and config.geocerca_auditoria and auditoria_data:
+            try:
+                registrar_auditoria(
+                    usuario=None,
+                    accion='GEOCERCA_APROBADO',
+                    descripcion=(
+                        f'Trabajador ID={trabajador_id} | '
+                        f'Resultado: {auditoria_data.get("resultado")} | '
+                        f'Distancia: {auditoria_data.get("distancia_metros")}m | '
+                        f'IP: {auditoria_data.get("ip")} | '
+                        f'Dispositivo: {auditoria_data.get("dispositivo")} | '
+                        f'Navegador: {auditoria_data.get("navegador")} | '
+                        f'Fecha: {auditoria_data.get("fecha_hora")}'
+                    ),
+                    ip=ip,
+                )
+            except Exception:
+                pass
+
         serializer = MarcacionSerializer(marcacion)
         return Response(
             {**serializer.data, 'mensaje': mensaje},
             status=status.HTTP_201_CREATED
         )
-
 
 class MarcacionHistorialView(APIView):
     """Historial COMPLETO: todas las marcaciones sin filtro de va_a_asistencia."""

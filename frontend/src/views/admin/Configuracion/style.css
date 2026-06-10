@@ -275,6 +275,212 @@
   color: #dc2626;
 }
 
+/*nuevos cambios*/
+
+
+/* ── Estilos específicos de geocerca ──────────────────────────────────────── */
+ 
+.seccion-geocerca {
+  border: 1px solid rgba(26, 58, 107, 0.15);
+  background: linear-gradient(135deg, #f8faff 0%, #ffffff 100%);
+}
+ 
+.seccion-geocerca h3 {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+ 
+.geocerca-icono {
+  font-size: 1.1em;
+}
+ 
+.geocerca-cargando {
+  text-align: center;
+  padding: 20px;
+  color: #999;
+  font-size: 0.85rem;
+}
+ 
+.geocerca-toggle-principal {
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #f0f0f0;
+  align-items: flex-start;
+  gap: 16px;
+}
+ 
+.geocerca-toggle-info {
+  flex: 1;
+}
+ 
+.geocerca-label-principal {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #1a3a6b;
+}
+ 
+.geocerca-desc {
+  font-size: 0.78rem;
+  color: #6b7280;
+  margin: 4px 0 0;
+  line-height: 1.5;
+}
+ 
+.toggle-lg {
+  width: 56px;
+  height: 30px;
+  border-radius: 15px;
+  flex-shrink: 0;
+}
+ 
+.toggle-lg .toggle-circulo {
+  width: 24px;
+  height: 24px;
+  top: 3px;
+  left: 3px;
+}
+ 
+.toggle-lg.activo .toggle-circulo {
+  left: 29px;
+}
+ 
+.geocerca-panel {
+  transition: opacity 0.2s;
+}
+ 
+.geocerca-panel-inactivo {
+  opacity: 0.65;
+}
+ 
+.geocerca-inactivo-aviso {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #92400e;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 0.82rem;
+  margin-bottom: 16px;
+}
+ 
+.geocerca-subtitulo {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #374151;
+  margin-bottom: 12px;
+  margin-top: 4px;
+}
+ 
+.input-coords {
+  padding: 8px 10px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-family: monospace;
+  color: #1a3a6b;
+}
+ 
+.input-coords:focus {
+  outline: none;
+  border-color: #1a3a6b;
+}
+ 
+.input-error {
+  border-color: #dc2626 !important;
+}
+ 
+.error-inline {
+  font-size: 0.75rem;
+  color: #dc2626;
+}
+ 
+.time-picker-error .sel-hora,
+.time-picker-error .sel-min,
+.time-picker-error .sel-ampm {
+  border-color: #dc2626;
+}
+ 
+.btn-obtener-coords {
+  margin-top: 10px;
+  padding: 7px 14px;
+  background: #f0f4ff;
+  border: 1px solid #c7d7f5;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  color: #1a3a6b;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.15s;
+}
+ 
+.btn-obtener-coords:hover {
+  background: #dbeafe;
+}
+ 
+.ubicacion-feedback {
+  display: block;
+  font-size: 0.78rem;
+  color: #16a34a;
+  margin-top: 6px;
+}
+ 
+.ubicacion-feedback.ubicacion-error {
+  color: #dc2626;
+}
+ 
+.radio-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+ 
+.input-radio-metros {
+  width: 100px;
+  padding: 8px 10px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #1a3a6b;
+  text-align: center;
+}
+ 
+.input-radio-metros:focus {
+  outline: none;
+  border-color: #1a3a6b;
+}
+ 
+.radio-hint {
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+ 
+.radio-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+ 
+.badge-estricto  { background: #fce7f3; color: #9d174d; }
+.badge-ok        { background: #d1fae5; color: #065f46; }
+.badge-amplio    { background: #fef9c3; color: #92400e; }
+.badge-muyamplio { background: #fee2e2; color: #991b1b; }
+ 
+.btn-guardar-geocerca {
+  margin-top: 16px;
+  background: #1a3a6b;
+  border: none;
+}
+ 
+.btn-guardar-geocerca:hover:not(:disabled) {
+  background: #142d54;
+}
+
+
 /* RESPONSIVE */
 @media (max-width: 768px) {
   .config-container { gap: 16px; }
@@ -300,6 +506,23 @@
   .horario-tag { font-size: 0.7rem; padding: 2px 6px; }
   .tolerancia-row { flex-wrap: wrap; }
   .input-tolerancia { width: 70px; }
+  .geocerca-toggle-principal {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+ 
+  .input-coords {
+    font-size: 0.82rem;
+  }
+ 
+  .radio-row {
+    flex-wrap: wrap;
+  }
+ 
+  .btn-guardar-geocerca {
+    width: 100%;
+    text-align: center;
+  }
 }
 
 /* ── Validación de horarios ─────────────────────────────────────────────── */

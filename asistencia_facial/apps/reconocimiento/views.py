@@ -1,4 +1,4 @@
-# reconocimiento/views.py — con validación IP + geolocalización
+# reconocimiento/views.py — con validación IP + geocerca + geolocalización
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -7,6 +7,7 @@ from django.utils import timezone
 from apps.trabajadores.models import Trabajador
 from apps.marcaciones.services import registrar_marcacion
 from apps.marcaciones.ip_service import get_client_ip, validar_ip_autorizada, obtener_info_ip
+from apps.marcaciones.geo_service import validar_geocerca          # ← NUEVO
 from apps.configuracion.models import ConfiguracionSistema
 from apps.usuarios.models import Usuario
 from apps.auditoria.services import registrar_auditoria
@@ -77,9 +78,9 @@ class VerificarRostroView(APIView):
             trabajador_id = request.data.get('trabajador_id')
             imagen_base64 = request.data.get('imagen')
             dispositivo   = request.data.get('dispositivo', 'No especificado')
-
-            latitud  = request.data.get('latitud')
-            longitud = request.data.get('longitud')
+            latitud       = request.data.get('latitud')
+            longitud      = request.data.get('longitud')
+            navegador     = request.data.get('navegador', '')   # ← NUEVO
 
             if not trabajador_id or not imagen_base64:
                 return Response(
@@ -113,12 +114,11 @@ class VerificarRostroView(APIView):
                     status=status.HTTP_403_FORBIDDEN
                 )
 
-            # ── IP ─────────────────────────────────────────────────────
+            # ── IP ──────────────────────────────────────────────────────
             ip = get_client_ip(request)
             print("IP detectada:", ip)
 
             ip_ok, ip_error = validar_ip_autorizada(ip, config)
-
             if not ip_ok:
                 registrar_auditoria(
                     usuario=usuario,
@@ -134,7 +134,7 @@ class VerificarRostroView(APIView):
                 arr_bd = np.array(emb_bd, dtype=np.float64)
                 print(f"[Diagnóstico BD] dim={arr_bd.shape[0]} | norma={np.linalg.norm(arr_bd):.6f}")
 
-            # ── RECONOCIMIENTO ──────────────────────────────────────────
+            # ── RECONOCIMIENTO FACIAL ───────────────────────────────────
             print("Generando embedding...")
             embedding_capturado, error = generar_embedding(imagen_base64)
 
@@ -149,21 +149,19 @@ class VerificarRostroView(APIView):
                 config.umbral_similitud
             )
 
-            # ── FALLÓ ──────────────────────────────────────────────────
+            # ── FALLÓ EL ROSTRO ─────────────────────────────────────────
             if not verificado:
                 usuario.intentos_fallidos += 1
 
                 if usuario.intentos_fallidos >= config.max_intentos_faciales:
                     usuario.bloqueado = True
                     usuario.save()
-
                     registrar_auditoria(
                         usuario=usuario,
                         accion='VERIFICACION_FALLIDA',
                         descripcion=f'Bloqueado. Similitud: {similitud:.2f}. IP: {ip}',
                         ip=ip
                     )
-
                     return Response(
                         {'error': 'Usuario bloqueado por intentos faciales fallidos'},
                         status=status.HTTP_403_FORBIDDEN
@@ -171,34 +169,73 @@ class VerificarRostroView(APIView):
 
                 usuario.save()
                 restantes = config.max_intentos_faciales - usuario.intentos_fallidos
-
                 registrar_auditoria(
                     usuario=usuario,
                     accion='VERIFICACION_FALLIDA',
                     descripcion=f'No coincide. Similitud: {similitud:.2f}. Intentos: {usuario.intentos_fallidos}',
                     ip=ip
                 )
-
                 return Response({
                     'error': f'El rostro no coincide. Intentos restantes: {restantes}',
                     'similitud':          round(similitud, 2),
                     'intentos_restantes': restantes
                 }, status=status.HTTP_401_UNAUTHORIZED)
 
-            # ── ÉXITO FACIAL: registrar marcación ───────────────────────
+            # ── ÉXITO FACIAL ────────────────────────────────────────────
             usuario.intentos_fallidos = 0
             usuario.save()
+            print("Verificación facial exitosa")
 
-            print("Verificación exitosa")
+            # ══════════════════════════════════════════════════════════════
+            # VALIDACIÓN DE GEOCERCA
+            # Se ejecuta DESPUÉS del reconocimiento facial (no gastamos
+            # recursos en geocerca si el rostro ya no coincide) y ANTES
+            # de registrar_marcacion() para que el rechazo no cree registro.
+            # ══════════════════════════════════════════════════════════════
+            permitido, mensaje_rechazo, auditoria_data = validar_geocerca(
+                latitud=latitud,
+                longitud=longitud,
+                config=config,
+                ip=ip,
+                dispositivo=dispositivo,
+                navegador=navegador,
+            )
 
-            info_ip = obtener_info_ip(ip)
+            if not permitido:
+                if config.geocerca_auditoria and auditoria_data:
+                    try:
+                        registrar_auditoria(
+                            usuario=usuario,
+                            accion='GEOCERCA_RECHAZO',
+                            descripcion=(
+                                f'Trabajador ID={trabajador_id} | '
+                                f'Motivo: {auditoria_data.get("motivo")} | '
+                                f'Lat: {auditoria_data.get("latitud_reportada")} | '
+                                f'Lon: {auditoria_data.get("longitud_reportada")} | '
+                                f'Distancia: {auditoria_data.get("distancia_metros")}m | '
+                                f'IP: {ip} | Dispositivo: {dispositivo}'
+                            ),
+                            ip=ip,
+                        )
+                    except Exception:
+                        pass
+
+                return Response(
+                    {
+                        'error':  mensaje_rechazo,
+                        'codigo': 'GEOCERCA_RECHAZADO',
+                    },
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+            # ── GEOCERCA OK → registrar marcación ───────────────────────
+            info_ip     = obtener_info_ip(ip)
             ciudad      = info_ip.get('ciudad', '')
             pais        = info_ip.get('pais', '')
             ip_info_str = f"{info_ip.get('org', '')} / {info_ip.get('isp', '')}".strip(' /')
 
             print("Registrando marcación...")
-
-            marcacion, error = registrar_marcacion(
+            marcacion, mensaje = registrar_marcacion(
                 trabajador, ip, dispositivo,
                 latitud=latitud,
                 longitud=longitud,
@@ -207,9 +244,25 @@ class VerificarRostroView(APIView):
                 ip_info=ip_info_str or None,
             )
 
-            if error:
-                print("Error marcación:", error)
-                return Response({'error': error}, status=status.HTTP_400_BAD_REQUEST)
+            if marcacion is None:
+                print("Error marcación:", mensaje)
+                return Response({'error': mensaje}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Auditoría geocerca aprobada
+            if config.geocerca_activa and config.geocerca_auditoria and auditoria_data:
+                try:
+                    registrar_auditoria(
+                        usuario=usuario,
+                        accion='GEOCERCA_APROBADO',
+                        descripcion=(
+                            f'Trabajador ID={trabajador_id} | '
+                            f'Distancia: {auditoria_data.get("distancia_metros")}m | '
+                            f'IP: {ip} | Dispositivo: {dispositivo}'
+                        ),
+                        ip=ip,
+                    )
+                except Exception:
+                    pass
 
             registrar_auditoria(
                 usuario=usuario,
@@ -219,13 +272,14 @@ class VerificarRostroView(APIView):
             )
 
             return Response({
-                'mensaje': 'Verificación exitosa',
+                'mensaje':   mensaje,
                 'similitud': similitud,
                 'marcacion': {
-                    'id':     marcacion.id,
-                    'tipo':   marcacion.tipo,
-                    'estado': marcacion.estado,
-                    'fecha':  marcacion.fecha,
+                    'id':              marcacion.id,
+                    'tipo':            marcacion.tipo,
+                    'estado':          marcacion.estado,
+                    'fecha':           marcacion.fecha,
+                    'va_a_asistencia': marcacion.va_a_asistencia,
                 },
                 'ubicacion': {
                     'ip':     ip,
@@ -238,11 +292,7 @@ class VerificarRostroView(APIView):
             import traceback
             print("\nERROR 500 EN VERIFICAR ROSTRO")
             traceback.print_exc()
-
             return Response(
-                {
-                    'error':   'Error interno del servidor',
-                    'detalle': str(e)
-                },
+                {'error': 'Error interno del servidor', 'detalle': str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
