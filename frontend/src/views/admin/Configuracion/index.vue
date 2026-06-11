@@ -167,7 +167,6 @@
         <h3>
           <span class="geocerca-icono"></span>
           Geocerca (Validación de Ubicación)
-          <span class="badge-solo-superadmin">Solo SuperAdmin</span>
         </h3>
  
         <div v-if="cargandoGeocerca" class="geocerca-cargando">Cargando configuración de geocerca...</div>
@@ -233,7 +232,7 @@
  
             <!-- Botón de ayuda para obtener coordenadas -->
             <button class="btn-obtener-coords" type="button" @click="obtenerMiUbicacion">
-              Usar mi ubicación actual como referencia
+              Usar mi ubicación actual
             </button>
             <span v-if="mensajeUbicacion" class="ubicacion-feedback" :class="{ 'ubicacion-error': errorUbicacion }">
               {{ mensajeUbicacion }}
@@ -257,7 +256,7 @@
                 <span class="radio-badge" :class="radioBadgeClass">{{ radioBadgeLabel }}</span>
               </div>
               <span v-if="erroresGeocerca.radio" class="error-inline">⚠ {{ erroresGeocerca.radio }}</span>
-              <span class="hint">Mínimo 10m. Recomendado para una oficina: 50–150m.</span>
+              <span class="hint">Mínimo 10m.</span>
             </div>
  
             <!-- Opciones adicionales -->

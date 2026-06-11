@@ -115,7 +115,7 @@
 
       <!-- Aviso si es ADMIN (no puede editar) -->
       <div v-if="datos && !auth.esSuperAdmin" class="aviso-readonly">
-        🔒 La edición de marcaciones es exclusiva del SuperAdmin.
+        La edición de marcaciones es exclusiva del SuperAdmin.
       </div>
     </div>
 

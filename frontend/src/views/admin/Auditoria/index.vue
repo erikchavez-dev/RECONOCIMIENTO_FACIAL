@@ -20,7 +20,6 @@
           <select v-model="accionFiltro" @change="cargarAuditoria(1)" class="sel-accion">
             <option value="">Todas</option>
             <option value="LOGIN">Login</option>
-            <option value="VERIFICACION">Verificación facial</option>
             <option value="CREAR">Crear</option>
             <option value="ELIMINAR">Eliminar</option>
             <option value="CAMBIO">Cambio</option>
